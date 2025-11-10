@@ -8,6 +8,7 @@
     "scheme": "biblegram",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "entryPoint": "./App.js",
     "ios": {
       "supportsTablet": true
     },
@@ -38,7 +39,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
