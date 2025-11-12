@@ -2,7 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { View, Text } from "react-native";
 import RootNavigator from "./src/navigation/RootNavigator";
 import "./global.css";
-import { AuthProvide } from "./src/context/AuthContext";
+import { AuthProvide, AuthProvider } from "./src/context/AuthContext";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
@@ -33,10 +33,10 @@ export default function App() {
   }
 
   return (
-    <AuthProvide>
+    <AuthProvider>
       <NavigationContainer>
         <RootNavigator />
       </NavigationContainer>
-    </AuthProvide>
+    </AuthProvider>
   );
 }
