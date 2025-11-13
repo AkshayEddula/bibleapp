@@ -1,111 +1,208 @@
-import { useNavigation } from "@react-navigation/native";
-import { Image, Animated } from "react-native";
-import { View, Text, Pressable } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, Image, Pressable, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Sparkles } from "lucide-react-native";
+import { useNavigation } from "@react-navigation/native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  interpolate,
+  Easing,
+  runOnJS,
+} from "react-native-reanimated";
 import { images } from "../../utils";
-import { ChevronRight, Sparkles } from "lucide-react-native";
-import { useEffect, useRef } from "react";
 
-export default function OnboardingScreen() {
+const { width } = Dimensions.get("window");
+
+// Dummy character import placeholder
+const lumi = images.Char;
+
+const slides = [
+  {
+    key: "1",
+    title: "Welcome to LumiVerse 🌤️",
+    subtitle:
+      "A home for prayer, peace, and purpose.\nShare your faith journey and feel God’s love through community.",
+    bubble: "Hey friend, I’m Lumi! Let’s walk in light together 🕊️",
+    gradient: ["#fdfcfb", "#f7f5f2", "#fdfcfb"],
+    buttonText: "Let’s Begin →",
+  },
+  {
+    key: "2",
+    title: "Share What’s on Your Heart",
+    subtitle:
+      "Post your prayer requests and lift others up.\nEvery prayer strengthens our circle of faith.",
+    bubble: "You’re never alone — someone is always praying with you 🙏",
+    gradient: ["#fff9e6", "#fef4cc", "#fff9e6"],
+    buttonText: "Next →",
+  },
+  {
+    key: "3",
+    title: "Celebrate God’s Goodness",
+    subtitle:
+      "Share testimonies, earn faith points, and inspire others with your story.\nWatch your light grow day by day.",
+    bubble: "Let’s shine bright together! ✨",
+    gradient: ["#fffaf4", "#fff2e0", "#fffaf4"],
+    buttonText: "Continue →",
+  },
+];
+
+export default function LumiOnboarding() {
   const navigation = useNavigation();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  const currentIndex = useSharedValue(0);
+  const fade = useSharedValue(0);
+  const translate = useSharedValue(30);
+  const bubble = useSharedValue(0);
+  const exitFade = useSharedValue(1);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    fade.value = withTiming(1, {
+      duration: 700,
+      easing: Easing.out(Easing.ease),
+    });
+    translate.value = withTiming(0, {
+      duration: 600,
+      easing: Easing.out(Easing.quad),
+    });
+    bubble.value = withDelay(400, withTiming(1, { duration: 600 }));
   }, []);
 
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fade.value * exitFade.value,
+    transform: [{ translateY: translate.value }],
+  }));
+
+  const bubbleStyle = useAnimatedStyle(() => ({
+    opacity: bubble.value * exitFade.value,
+    transform: [{ translateY: interpolate(bubble.value, [0, 1], [15, 0]) }],
+  }));
+
+  const slideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -currentIndex.value * width }],
+  }));
+
+  const nextSlide = () => {
+    if (currentIndex.value < slides.length - 1) {
+      // fade current out then fade next in
+      fade.value = withTiming(0, { duration: 400 }, () => {
+        currentIndex.value += 1;
+        fade.value = withTiming(1, { duration: 600 });
+      });
+      bubble.value = withTiming(0, { duration: 300 }, () => {
+        bubble.value = withDelay(300, withTiming(1, { duration: 500 }));
+      });
+    } else {
+      // last slide → fade out + navigate
+      exitFade.value = withTiming(0, { duration: 600 });
+      setTimeout(() => {
+        runOnJS(navigation.navigate)("Login");
+      }, 700);
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      {/* Decorative gradient circles */}
-      {/* <View className="absolute top-10 right-10 w-32 h-32 bg-primary-light/10 rounded-full blur-3xl" />*/}
-      {/* <View className="absolute bottom-32 left-10 w-40 h-40 bg-primary-light/10 rounded-full blur-3xl" />*/}
-
-      <View className="flex-1 items-center justify-between pt-12 pb-8 px-6">
-        {/* Top section with logo/image */}
-        <Animated.View
-          style={{
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          }}
-          className="flex-1 justify-center"
-        >
-          <View className="relative">
-            {/* Subtle glow effect behind image */}
-            <View className="absolute inset-0 bg-primary-light/20 rounded-full blur-2xl scale-90" />
-            <Image
-              source={images.Char}
-              className="w-[320px] h-[320px]"
-              resizeMode="contain"
-            />
-          </View>
-        </Animated.View>
-
-        {/* Bottom section with text and button */}
-        <Animated.View
-          style={{
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          }}
-          className="w-full gap-y-8"
-        >
-          {/* Text content */}
-          <View className="gap-y-5 px-2">
-            <View className="items-center gap-y-3">
-              <Text className="text-[32px] font-lexend tracking-tighter text-center leading-tight">
-                Welcome to{"\n"}
-                <Text className="text-primary-light">LumiVerse</Text> 🌤️
-              </Text>
-              <View className="w-16 h-1 bg-primary-light/30 rounded-full" />
-            </View>
-
-            <Text className="text-[17px] leading-8 text-center font-lexend-light tracking-tight text-gray-600 px-2">
-              A sacred space for prayer, peace, and purpose. Share your faith
-              journey and embrace God's love through community.
-            </Text>
-          </View>
-
-          {/* Button with enhanced styling */}
-          <Pressable
-            className="flex flex-row gap-x-2 items-center justify-center bg-primary-light rounded-2xl py-5 px-6 mx-2 shadow-lg active:scale-95"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 6,
-            }}
+    <View className="flex-1 bg-white">
+      <Animated.View
+        style={[
+          {
+            flexDirection: "row",
+            width: width * slides.length,
+            height: "100%",
+          },
+          slideStyle,
+        ]}
+      >
+        {slides.map((slide, index) => (
+          <LinearGradient
+            key={slide.key}
+            colors={slide.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width, flex: 1 }}
           >
-            <Text className="text-[19px] text-background font-lexend-medium tracking-tight">
-              Let's Begin
-            </Text>
-            <Sparkles strokeWidth={2} color="#fafaf8" size={22} />
-          </Pressable>
+            <SafeAreaView className="flex-1 justify-between items-center py-10 px-6">
+              <Animated.View
+                style={[fadeStyle, { alignItems: "center", gap: 16 }]}
+              >
+                <Animated.View style={bubbleStyle}>
+                  <View
+                    className="bg-white rounded-3xl px-6 py-4 border border-stone-200/60"
+                    style={{
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                    }}
+                  >
+                    <Text className="text-[15px] text-gray-700 font-lexend-light text-center">
+                      {slide.bubble}
+                    </Text>
+                  </View>
+                  <View
+                    className="absolute -bottom-2 left-1/2 -ml-2 w-4 h-4 bg-white rotate-45"
+                    style={{
+                      borderLeftWidth: 1,
+                      borderBottomWidth: 1,
+                      borderColor: "rgba(231, 229, 228, 0.6)",
+                    }}
+                  />
+                </Animated.View>
 
-          {/* Optional footer text */}
-          <Text className="text-[13px] text-center font-lexend-light text-gray-400 px-8">
-            Join thousands in a journey of faith and fellowship
-          </Text>
-        </Animated.View>
-      </View>
-    </SafeAreaView>
+                <Image
+                  source={lumi}
+                  className="w-[350px] h-[350px]"
+                  resizeMode="contain"
+                />
+              </Animated.View>
+
+              <Animated.View style={[fadeStyle, { width: "100%", gap: 28 }]}>
+                <View className="items-center">
+                  <Text className="text-[28px] font-lexend text-gray-800 text-center leading-tight">
+                    {slide.title}
+                  </Text>
+                  <Text className="text-[16px] text-gray-600 text-center mt-3 font-lexend-light leading-7">
+                    {slide.subtitle}
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={nextSlide}
+                  className="mx-4 rounded-[18px] overflow-hidden active:scale-95"
+                >
+                  <LinearGradient
+                    colors={["#FEE8A0", "#F9C846", "#F6B73C"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      flexDirection: "row",
+                      gap: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 18,
+                      borderWidth: 0.5,
+                      borderColor: "rgba(255,255,255,0.6)",
+                      shadowColor: "#F9C846",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.35,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <Text className="text-[18px] text-gray-800 font-lexend-medium tracking-tight">
+                      {slide.buttonText}
+                    </Text>
+                    <Sparkles strokeWidth={2} color="#57534e" size={22} />
+                  </LinearGradient>
+                </Pressable>
+              </Animated.View>
+            </SafeAreaView>
+          </LinearGradient>
+        ))}
+      </Animated.View>
+    </View>
   );
 }
