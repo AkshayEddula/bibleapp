@@ -3,7 +3,7 @@ import { View, Text, Image, Pressable, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Sparkles } from "lucide-react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +14,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { images } from "../../utils";
+import { useCallback } from "react";
 
 const { width } = Dimensions.get("window");
 
@@ -41,6 +42,15 @@ const slides = [
   },
   {
     key: "3",
+    title: "Discover the Word 📖✨",
+    subtitle:
+      "Watch Bible reels, explore verses, and find daily encouragement.\nThe Word of God made alive and beautiful.",
+    bubble: "The Word is alive — let’s explore it together 📖✨",
+    gradient: ["#f6f1ff", "#f8f5fa", "#fffafc"],
+    buttonText: "Next →",
+  },
+  {
+    key: "4",
     title: "Celebrate God’s Goodness",
     subtitle:
       "Share testimonies, earn faith points, and inspire others with your story.\nWatch your light grow day by day.",
@@ -59,17 +69,27 @@ export default function LumiOnboarding() {
   const bubble = useSharedValue(0);
   const exitFade = useSharedValue(1);
 
-  useEffect(() => {
-    fade.value = withTiming(1, {
-      duration: 700,
-      easing: Easing.out(Easing.ease),
-    });
-    translate.value = withTiming(0, {
-      duration: 600,
-      easing: Easing.out(Easing.quad),
-    });
-    bubble.value = withDelay(400, withTiming(1, { duration: 600 }));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      // Reset all animation values when screen comes into focus
+      currentIndex.value = 0;
+      exitFade.value = 1;
+      fade.value = 0;
+      translate.value = 30;
+      bubble.value = 0;
+
+      // Start animations
+      fade.value = withTiming(1, {
+        duration: 700,
+        easing: Easing.out(Easing.ease),
+      });
+      translate.value = withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.quad),
+      });
+      bubble.value = withDelay(400, withTiming(1, { duration: 600 }));
+    }, []),
+  );
 
   const fadeStyle = useAnimatedStyle(() => ({
     opacity: fade.value * exitFade.value,
