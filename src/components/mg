@@ -1,0 +1,199 @@
+-- ============================================
+-- PASTE THIS IN SUPABASE SQL EDITOR
+-- ============================================
+
+-- Step 1: Add has_testimony column to prayer_requests
+ALTER TABLE prayer_requests
+ADD COLUMN IF NOT EXISTS has_testimony BOOLEAN DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_prayer_requests_has_testimony
+ON prayer_requests(has_testimony) WHERE has_testimony = TRUE;
+
+-- ============================================
+-- Step 2: Create testimonies table
+-- ============================================
+CREATE TABLE IF NOT EXISTS testimonies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  prayer_request_id UUID REFERENCES prayer_requests(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN (
+    'Health',
+    'Family',
+    'Work',
+    'Spiritual Growth',
+    'Financial',
+    'Relationships',
+    'Guidance',
+    'Thanksgiving',
+    'Other'
+  )),
+  is_featured BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_testimonies_user_id ON testimonies(user_id);
+CREATE INDEX idx_testimonies_prayer_request ON testimonies(prayer_request_id);
+CREATE INDEX idx_testimonies_category ON testimonies(category);
+CREATE INDEX idx_testimonies_created_at ON testimonies(created_at DESC);
+CREATE INDEX idx_testimonies_featured ON testimonies(is_featured) WHERE is_featured = TRUE;
+
+-- ============================================
+-- Step 3: Create testimony_reactions table
+-- ============================================
+CREATE TABLE IF NOT EXISTS testimony_reactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  testimony_id UUID NOT NULL REFERENCES testimonies(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  reaction_type TEXT NOT NULL CHECK (reaction_type IN ('praise', 'amen', 'blessed')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(testimony_id, user_id, reaction_type)
+);
+
+CREATE INDEX idx_testimony_reactions_testimony ON testimony_reactions(testimony_id);
+CREATE INDEX idx_testimony_reactions_user ON testimony_reactions(user_id);
+CREATE INDEX idx_testimony_reactions_type ON testimony_reactions(reaction_type);
+
+-- ============================================
+-- Step 4: Create testimony_comments table
+-- ============================================
+CREATE TABLE IF NOT EXISTS testimony_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  testimony_id UUID NOT NULL REFERENCES testimonies(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  comment_text TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_testimony_comments_testimony ON testimony_comments(testimony_id);
+CREATE INDEX idx_testimony_comments_user ON testimony_comments(user_id);
+CREATE INDEX idx_testimony_comments_created ON testimony_comments(created_at DESC);
+
+-- ============================================
+-- Step 5: Create testimony_shares table
+-- ============================================
+CREATE TABLE IF NOT EXISTS testimony_shares (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  testimony_id UUID NOT NULL REFERENCES testimonies(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  share_platform TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_testimony_shares_testimony ON testimony_shares(testimony_id);
+CREATE INDEX idx_testimony_shares_user ON testimony_shares(user_id);
+
+-- ============================================
+-- Step 6: Create trigger function
+-- ============================================
+CREATE OR REPLACE FUNCTION update_prayer_testimony_status()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.prayer_request_id IS NOT NULL THEN
+    UPDATE prayer_requests
+    SET
+      has_testimony = TRUE,
+      is_answered = TRUE,
+      updated_at = NOW()
+    WHERE id = NEW.prayer_request_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
+-- Step 7: Create trigger for testimony creation
+-- ============================================
+DROP TRIGGER IF EXISTS testimony_created_trigger ON testimonies;
+CREATE TRIGGER testimony_created_trigger
+AFTER INSERT ON testimonies
+FOR EACH ROW
+EXECUTE FUNCTION update_prayer_testimony_status();
+
+-- ============================================
+-- Step 8: Create trigger for testimony updates
+-- ============================================
+CREATE OR REPLACE FUNCTION update_testimony_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS testimony_updated_trigger ON testimonies;
+CREATE TRIGGER testimony_updated_trigger
+BEFORE UPDATE ON testimonies
+FOR EACH ROW
+EXECUTE FUNCTION update_testimony_timestamp();
+
+-- ============================================
+-- Step 9: Create testimonies_feed view
+-- ============================================
+CREATE OR REPLACE VIEW testimonies_feed AS
+SELECT
+  t.id,
+  t.user_id,
+  t.prayer_request_id,
+  t.title,
+  t.content,
+  t.category,
+  t.is_featured,
+  t.created_at,
+  t.updated_at,
+
+  p.first_name || ' ' || p.last_name as user_name,
+  p.avatar_url,
+
+  pr.title as original_prayer_title,
+  pr.description as original_prayer_description,
+  pr.created_at as prayer_created_at,
+  pr.category as prayer_category,
+
+  (SELECT COUNT(*) FROM testimony_reactions WHERE testimony_id = t.id AND reaction_type = 'praise') as praise_count,
+  (SELECT COUNT(*) FROM testimony_reactions WHERE testimony_id = t.id AND reaction_type = 'amen') as amen_count,
+  (SELECT COUNT(*) FROM testimony_reactions WHERE testimony_id = t.id AND reaction_type = 'blessed') as blessed_count,
+  (SELECT COUNT(*) FROM testimony_reactions WHERE testimony_id = t.id) as total_reactions,
+
+  (SELECT COUNT(*) FROM testimony_comments WHERE testimony_id = t.id) as comment_count,
+  (SELECT COUNT(*) FROM testimony_shares WHERE testimony_id = t.id) as share_count,
+
+  CASE WHEN t.prayer_request_id IS NULL THEN FALSE ELSE TRUE END as is_linked_to_prayer
+
+FROM testimonies t
+LEFT JOIN profiles p ON t.user_id = p.id
+LEFT JOIN prayer_requests pr ON t.prayer_request_id = pr.id
+ORDER BY t.is_featured DESC, t.created_at DESC;
+
+-- ============================================
+-- Step 10: Create prayers_for_testimony view
+-- ============================================
+CREATE OR REPLACE VIEW prayers_for_testimony AS
+SELECT
+  pr.id,
+  pr.user_id,
+  pr.title,
+  pr.description,
+  pr.category,
+  pr.is_answered,
+  pr.has_testimony,
+  pr.created_at,
+  pr.updated_at,
+
+  (SELECT COUNT(*) FROM prayer_reactions WHERE prayer_request_id = pr.id) as prayer_count,
+
+  t.id as testimony_id,
+  t.title as testimony_title,
+  t.created_at as testimony_created_at
+
+FROM prayer_requests pr
+LEFT JOIN testimonies t ON pr.id = t.prayer_request_id
+ORDER BY pr.created_at DESC;
+
+-- ============================================
+-- DONE! ✅
+-- ============================================
+-- All tables, indexes, triggers, and views created successfully

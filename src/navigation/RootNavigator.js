@@ -4,6 +4,8 @@ import OnboardingSteps from "../screens/auth/onboardingSteps"; // Add this impor
 import LoginScreen from "../screens/auth/login";
 import { useAuth } from "../context/AuthContext";
 import TabNavigator from "./TavNavigator";
+import PrayerWallScreen from "../components/PrayerCard";
+import TestimoniesScreen from "../components/TestimonalCard";
 
 const Stack = createNativeStackNavigator();
 
@@ -26,11 +28,15 @@ export default function RootNavigator() {
             options={{ headerShown: false }}
           />
         ) : (
-          <Stack.Screen
-            name="Tabs"
-            component={TabNavigator}
-            options={{ headerShown: false }}
-          />
+          <>
+            <Stack.Screen
+              name="Tabs"
+              component={TabNavigator}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="Prayers" component={PrayerWallScreen} />
+            <Stack.Screen name="Testimonies" component={TestimoniesScreen} />
+          </>
         )
       ) : (
         <>
