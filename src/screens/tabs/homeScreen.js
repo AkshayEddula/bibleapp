@@ -22,6 +22,7 @@ import { VerseCard } from "../../components/VerseCard";
 import { StoryCircle } from "../../components/StoriesCard";
 import PrayerWallScreen from "../../components/PrayerCard";
 import TestimoniesScreen from "../../components/TestimonalCard";
+import { TouchableOpacity } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -321,6 +322,9 @@ export default function HomeScreen() {
               ))}
               <PrayerWallScreen />
               <TestimoniesScreen />
+              <TouchableOpacity onPress={() => logout()}>
+                <Text>Logout</Text>
+              </TouchableOpacity>
             </ScrollView>
           )}
         </View>

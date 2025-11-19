@@ -389,7 +389,7 @@ export default function PrayerWallScreen() {
   return (
     <SafeAreaView className="flex-1 ">
       {/* Header */}
-      <View className="b px-4 pt-0 pb-4 border-b border-stone-200">
+      <View className=" px-4 pt-0 pb-4 border-b border-stone-200">
         <View className="flex-row items-center justify-between">
           <View>
             <Text className="text-2xl font-lexend-semibold text-gray-800">

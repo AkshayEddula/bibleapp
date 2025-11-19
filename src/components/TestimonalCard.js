@@ -46,7 +46,7 @@ export default function TestimoniesScreen() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
-  const [showPrayerSelect, setShowPrayerSelect] = useState(false);
+  const [showPrayerDropdown, setShowPrayerDropdown] = useState(false);
 
   const [selectedTestimony, setSelectedTestimony] = useState(null);
   const [comments, setComments] = useState([]);
@@ -92,6 +92,10 @@ export default function TestimoniesScreen() {
           profiles:user_id (
             display_name,
             profile_photo_url
+          ),
+          prayer_requests:prayer_request_id (
+            title,
+            description
           )
         `,
         )
@@ -139,18 +143,20 @@ export default function TestimoniesScreen() {
             reactionCounts,
             commentCount: commentCount || 0,
             userReactions,
+            linkedPrayer: testimony.prayer_requests,
           };
         }),
       );
 
       setTestimonies(testimoniesWithCounts);
+      console.log(testimoniesWithCounts);
     } catch (error) {
       console.error("Error fetching testimonies:", error);
     } finally {
       setLoading(false);
     }
   };
-  // Fetch user's own prayer requests (for linking when creating a testimony)
+
   const fetchUserPrayers = async () => {
     console.log("Starting to fetch prayers for user:", user?.id);
     if (!user?.id) return;
@@ -197,7 +203,6 @@ export default function TestimoniesScreen() {
 
     const hasReacted = testimony.userReactions.has(reactionType);
 
-    // Optimistic UI update
     setTestimonies((prev) =>
       prev.map((t) => {
         if (t.id === testimonyId) {
@@ -244,7 +249,6 @@ export default function TestimoniesScreen() {
       }
     } catch (error) {
       console.error("Error toggling reaction:", error);
-      // rollback - refetch to ensure consistent state
       fetchTestimonies();
     }
   };
@@ -418,19 +422,13 @@ export default function TestimoniesScreen() {
       setNewTestimony((prev) => ({ ...prev, prayer_request_id: null }));
       setSelectedPrayerTitle("");
     }
-    setShowPrayerSelect(false);
+    setShowPrayerDropdown(false);
   };
 
-  const openPrayerSelect = () => {
-    console.log("Opening prayer select, current prayers:", userPrayers);
-    setShowPrayerSelect(true);
-  };
-
-  // --- JSX Render Start ---
   return (
     <View className="mb-8">
       {/* Section Header */}
-      <View className="px-0 mb-4">
+      <View className="px-4 mb-4">
         <View className="flex-row items-center justify-between mb-3">
           <View>
             <Text className="text-xl font-lexend-semibold text-gray-800">
@@ -596,7 +594,58 @@ export default function TestimoniesScreen() {
                       </View>
                     </View>
                   </LinearGradient>
-                  {/* Body */}
+
+                  {/* Prayer Link Badge - Show if linked to prayer */}
+                  {testimony.prayer_request_id && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        margin: 12,
+                        paddingVertical: 14,
+                        paddingHorizontal: 18,
+                        borderWidth: 1,
+                        borderColor: "#e5e7eb",
+                        backgroundColor: "#fafafa",
+                        borderRadius: 14,
+                      }}
+                    >
+                      {/* Left vertical thread line */}
+                      <View
+                        style={{
+                          width: 3,
+                          backgroundColor: "#d1d5db",
+                          borderRadius: 999,
+                          marginRight: 12,
+                        }}
+                      />
+
+                      {/* Right content block */}
+                      <View style={{ flex: 1 }}>
+                        {/* Heading Row */}
+                        <View className="flex-row items-center gap-2 mb-6">
+                          <Text style={{ fontSize: 16 }}>🙏</Text>
+                          <Text className="text-[15px] font-lexend text-gray-500">
+                            Answered Prayer Testimony
+                          </Text>
+                        </View>
+
+                        <View className="flex-row items-start gap-2 mb-2 ml-2">
+                          {/* Title */}
+                          <Text className="text-xl">✨</Text>
+
+                          <Text className="font-lexend-medium text-[15px] text-gray-900">
+                            {testimony.linkedPrayer.title}
+                          </Text>
+                        </View>
+
+                        {/* Description */}
+                        <Text className="font-lexend-light text-[14px] text-gray-500 leading-6 ml-2 mt-0">
+                          {testimony.linkedPrayer.description}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
                   <View className="px-5 py-4">
                     <View className="flex-row items-start gap-2 mb-2">
                       <Text className="text-xl">✨</Text>
@@ -609,7 +658,6 @@ export default function TestimoniesScreen() {
                     </Text>
                   </View>
 
-                  {/* Reactions */}
                   <View className="px-5 pb-3">
                     <View className="flex-row items-center gap-2">
                       {reactions.map((reaction) => {
@@ -660,7 +708,6 @@ export default function TestimoniesScreen() {
                     </View>
                   </View>
 
-                  {/* Footer Row */}
                   <View className="px-5 pb-4 pt-2 border-t border-stone-100">
                     <View className="flex-row items-center justify-between">
                       <Text className="text-xs font-lexend-medium text-gray-500">
@@ -702,9 +749,7 @@ export default function TestimoniesScreen() {
         </>
       )}
 
-      {/* --------------------------------------------------------------------- */}
-      {/* FIXED ADD TESTIMONY MODAL (85% Height) */}
-      {/* --------------------------------------------------------------------- */}
+      {/* ADD TESTIMONY MODAL */}
       <Modal
         visible={showAddModal}
         animationType="slide"
@@ -712,14 +757,12 @@ export default function TestimoniesScreen() {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View className="flex-1 bg-black/60 justify-end">
-          {/* Close Area */}
           <TouchableOpacity
             style={{ flex: 1 }}
             activeOpacity={1}
             onPress={() => setShowAddModal(false)}
           />
 
-          {/* Modal Body */}
           <View
             className="bg-white rounded-t-[28px]"
             style={{
@@ -732,7 +775,6 @@ export default function TestimoniesScreen() {
               elevation: 10,
             }}
           >
-            {/* Header */}
             <View className="px-6 py-4 border-b border-stone-200">
               <View className="flex-row items-center justify-between">
                 <Text className="text-lg font-lexend-semibold text-gray-800">
@@ -747,50 +789,235 @@ export default function TestimoniesScreen() {
               </View>
             </View>
 
-            {/* Scroll Content */}
             <ScrollView
               className="flex-1 px-6 py-5"
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="always"
             >
-              {/* Prayer Link */}
+              {/* Prayer Link Dropdown */}
               <View className="mb-4">
                 <Text className="text-sm font-lexend-semibold text-gray-700 mb-2">
                   Link to Prayer Request (Optional)
                 </Text>
 
-                <TouchableOpacity
-                  onPress={openPrayerSelect}
-                  activeOpacity={0.6}
-                  style={{
-                    backgroundColor: "#fafaf9",
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: "#e7e5e4",
-                    paddingHorizontal: 16,
-                    paddingVertical: 14,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    minHeight: 56,
-                  }}
-                >
-                  <Text
-                    className={`font-lexend text-sm flex-1 ${
-                      selectedPrayerTitle
-                        ? "text-gray-800 font-lexend-medium"
-                        : "text-gray-400"
-                    }`}
-                    numberOfLines={1}
+                <View style={{ position: "relative", zIndex: 1000 }}>
+                  <TouchableOpacity
+                    onPress={() => setShowPrayerDropdown(!showPrayerDropdown)}
+                    activeOpacity={0.6}
+                    style={{
+                      backgroundColor: "#fafaf9",
+                      borderRadius: 16,
+                      borderWidth: 2,
+                      borderColor: showPrayerDropdown ? "#fbbf24" : "#e7e5e4",
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      minHeight: 56,
+                    }}
                   >
-                    {selectedPrayerTitle || "Tap to select a prayer request"}
-                  </Text>
-                  <ChevronDown size={22} color="#78716c" />
-                </TouchableOpacity>
+                    <Text
+                      className={`font-lexend text-sm flex-1 ${
+                        selectedPrayerTitle
+                          ? "text-gray-800 font-lexend-medium"
+                          : "text-gray-400"
+                      }`}
+                      numberOfLines={1}
+                    >
+                      {selectedPrayerTitle || "Select a prayer request"}
+                    </Text>
+                    <ChevronDown
+                      size={22}
+                      color="#78716c"
+                      style={{
+                        transform: [
+                          { rotate: showPrayerDropdown ? "180deg" : "0deg" },
+                        ],
+                      }}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Dropdown Menu */}
+                  {showPrayerDropdown && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 60,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: "white",
+                        borderRadius: 16,
+                        borderWidth: 2,
+                        borderColor: "#e7e5e4",
+                        maxHeight: 250,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 12,
+                        elevation: 8,
+                        zIndex: 1001,
+                      }}
+                    >
+                      <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        style={{ maxHeight: 250 }}
+                        nestedScrollEnabled={true}
+                      >
+                        {loadingPrayers ? (
+                          <View
+                            style={{
+                              paddingVertical: 40,
+                              alignItems: "center",
+                            }}
+                          >
+                            <ActivityIndicator size="small" color="#F9C846" />
+                            <Text
+                              style={{
+                                marginTop: 8,
+                                fontSize: 12,
+                                color: "#78716c",
+                              }}
+                            >
+                              Loading prayers...
+                            </Text>
+                          </View>
+                        ) : (
+                          <>
+                            {/* None option */}
+                            <TouchableOpacity
+                              onPress={() => handleSelectPrayer(null)}
+                              activeOpacity={0.7}
+                              style={{
+                                paddingHorizontal: 16,
+                                paddingVertical: 14,
+                                borderBottomWidth: 1,
+                                borderBottomColor: "#f5f5f4",
+                                backgroundColor:
+                                  newTestimony.prayer_request_id === null
+                                    ? "#fef3c7"
+                                    : "transparent",
+                              }}
+                            >
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: "500",
+                                    color:
+                                      newTestimony.prayer_request_id === null
+                                        ? "#78350f"
+                                        : "#1f2937",
+                                  }}
+                                >
+                                  None (No linked prayer)
+                                </Text>
+                                {newTestimony.prayer_request_id === null && (
+                                  <Check size={18} color="#f59e0b" />
+                                )}
+                              </View>
+                            </TouchableOpacity>
+
+                            {/* Prayer list */}
+                            {userPrayers.length === 0 ? (
+                              <View
+                                style={{
+                                  paddingVertical: 24,
+                                  paddingHorizontal: 16,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Text style={{ fontSize: 32 }}>🙏</Text>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    color: "#78716c",
+                                    marginTop: 8,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  No prayer requests found
+                                </Text>
+                              </View>
+                            ) : (
+                              userPrayers.map((prayer, index) => {
+                                const selected =
+                                  newTestimony.prayer_request_id === prayer.id;
+
+                                return (
+                                  <TouchableOpacity
+                                    key={prayer.id}
+                                    onPress={() => handleSelectPrayer(prayer)}
+                                    activeOpacity={0.7}
+                                    style={{
+                                      paddingHorizontal: 16,
+                                      paddingVertical: 14,
+                                      borderBottomWidth:
+                                        index < userPrayers.length - 1 ? 1 : 0,
+                                      borderBottomColor: "#f5f5f4",
+                                      backgroundColor: selected
+                                        ? "#fef3c7"
+                                        : "transparent",
+                                    }}
+                                  >
+                                    <View
+                                      style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                      }}
+                                    >
+                                      <View
+                                        style={{ flex: 1, marginRight: 12 }}
+                                      >
+                                        <Text
+                                          style={{
+                                            fontSize: 14,
+                                            fontWeight: "500",
+                                            color: selected
+                                              ? "#78350f"
+                                              : "#1f2937",
+                                          }}
+                                          numberOfLines={2}
+                                        >
+                                          {prayer.title}
+                                        </Text>
+                                        <Text
+                                          style={{
+                                            fontSize: 11,
+                                            color: selected
+                                              ? "#92400e"
+                                              : "#78716c",
+                                            marginTop: 2,
+                                          }}
+                                        >
+                                          {timeAgo(prayer.created_at)}
+                                        </Text>
+                                      </View>
+                                      {selected && (
+                                        <Check size={18} color="#f59e0b" />
+                                      )}
+                                    </View>
+                                  </TouchableOpacity>
+                                );
+                              })
+                            )}
+                          </>
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
               </View>
 
               {/* Title */}
-              <View className="mb-4">
+              <View className="mb-4" style={{ zIndex: 1 }}>
                 <Text className="text-sm font-lexend-semibold text-gray-700 mb-2">
                   Title *
                 </Text>
@@ -810,7 +1037,7 @@ export default function TestimoniesScreen() {
               </View>
 
               {/* Content */}
-              <View className="mb-4">
+              <View className="mb-4" style={{ zIndex: 1 }}>
                 <Text className="text-sm font-lexend-semibold text-gray-700 mb-2">
                   Your Testimony *
                 </Text>
@@ -837,7 +1064,7 @@ export default function TestimoniesScreen() {
               </View>
 
               {/* Category */}
-              <View className="mb-4">
+              <View className="mb-4" style={{ zIndex: 1 }}>
                 <Text className="text-sm font-lexend-semibold text-gray-700 mb-2">
                   Category
                 </Text>
@@ -952,253 +1179,7 @@ export default function TestimoniesScreen() {
         </View>
       </Modal>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* PRAYER SELECTION MODAL */}
-      {/* --------------------------------------------------------------------- */}
-      {/* PRAYER SELECTION MODAL */}
-      <Modal
-        visible={showPrayerSelect}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowPrayerSelect(false)}
-      >
-        <View className="flex-1 bg-black/60 justify-end">
-          {/* Close when tapping outside */}
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            activeOpacity={1}
-            onPress={() => setShowPrayerSelect(false)}
-          />
-
-          {/* Modal */}
-          <View
-            style={{
-              backgroundColor: "white",
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              height: "75%",
-              overflow: "hidden",
-              paddingBottom: 6,
-            }}
-          >
-            {/* Header */}
-            <View
-              style={{
-                paddingHorizontal: 24,
-                paddingVertical: 20,
-                borderBottomWidth: 1,
-                borderBottomColor: "#e7e5e4",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 6,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: "700",
-                    color: "#1f2937",
-                  }}
-                >
-                  Select Prayer Request
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() => setShowPrayerSelect(false)}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                >
-                  <X size={26} color="#57534e" strokeWidth={2.5} />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={{ fontSize: 12, color: "#78716c" }}>
-                Choose which prayer this testimony answers
-              </Text>
-            </View>
-
-            {/* LIST AREA */}
-            <View style={{ flex: 1 }}>
-              <ScrollView
-                style={{ flex: 1, paddingHorizontal: 24, paddingTop: 16 }}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* LOADING */}
-                {loadingPrayers ? (
-                  <View
-                    style={{
-                      alignItems: "center",
-                      paddingTop: 80,
-                    }}
-                  >
-                    <ActivityIndicator size="large" color="#F9C846" />
-                    <Text style={{ marginTop: 10, color: "#78716c" }}>
-                      Loading your prayers...
-                    </Text>
-                  </View>
-                ) : userPrayers.length === 0 ? (
-                  /* NO PRAYERS */
-                  <View
-                    style={{
-                      alignItems: "center",
-                      paddingTop: 80,
-                    }}
-                  >
-                    <Text style={{ fontSize: 50 }}>🙏</Text>
-                    <Text
-                      style={{ fontSize: 18, fontWeight: "600", marginTop: 10 }}
-                    >
-                      No prayers found
-                    </Text>
-                    <Text
-                      style={{
-                        textAlign: "center",
-                        color: "#78716c",
-                        marginTop: 6,
-                      }}
-                    >
-                      You can still share your testimony without linking a
-                      prayer
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    {/* "No linked prayer" option */}
-                    <TouchableOpacity
-                      onPress={() => handleSelectPrayer(null)}
-                      activeOpacity={0.7}
-                      style={{ marginBottom: 12 }}
-                    >
-                      <View
-                        style={{
-                          borderRadius: 16,
-                          borderWidth: 2,
-                          borderColor:
-                            newTestimony.prayer_request_id === null
-                              ? "#fbbf24"
-                              : "#e7e5e4",
-                          backgroundColor:
-                            newTestimony.prayer_request_id === null
-                              ? "#fef3c7"
-                              : "white",
-                          paddingHorizontal: 20,
-                          paddingVertical: 16,
-                          flexDirection: "row",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "600",
-                            color:
-                              newTestimony.prayer_request_id === null
-                                ? "#78350f"
-                                : "#1f2937",
-                          }}
-                        >
-                          No linked prayer
-                        </Text>
-
-                        {newTestimony.prayer_request_id === null && (
-                          <View
-                            style={{
-                              width: 26,
-                              height: 26,
-                              borderRadius: 13,
-                              backgroundColor: "#f59e0b",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <Check size={18} color="white" />
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* ACTUAL PRAYER ITEMS */}
-                    {userPrayers.map((prayer) => {
-                      const selected =
-                        newTestimony.prayer_request_id === prayer.id;
-
-                      return (
-                        <TouchableOpacity
-                          key={prayer.id}
-                          activeOpacity={0.7}
-                          onPress={() => handleSelectPrayer(prayer)}
-                          style={{ marginBottom: 12 }}
-                        >
-                          <View
-                            style={{
-                              borderRadius: 16,
-                              borderWidth: 2,
-                              borderColor: selected ? "#fbbf24" : "#e7e5e4",
-                              backgroundColor: selected ? "#fef3c7" : "white",
-                              paddingHorizontal: 20,
-                              paddingVertical: 16,
-                              flexDirection: "row",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <View style={{ flex: 1, marginRight: 10 }}>
-                              <Text
-                                style={{
-                                  fontSize: 16,
-                                  fontWeight: "600",
-                                  color: selected ? "#78350f" : "#1f2937",
-                                }}
-                              >
-                                {prayer.title}
-                              </Text>
-
-                              <Text
-                                style={{
-                                  fontSize: 12,
-                                  marginTop: 4,
-                                  color: selected ? "#92400e" : "#78716c",
-                                }}
-                              >
-                                {timeAgo(prayer.created_at)}
-                              </Text>
-                            </View>
-
-                            {selected && (
-                              <View
-                                style={{
-                                  width: 26,
-                                  height: 26,
-                                  borderRadius: 13,
-                                  backgroundColor: "#f59e0b",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  marginLeft: 12,
-                                }}
-                              >
-                                <Check size={18} color="white" />
-                              </View>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* --------------------------------------------------------------------- */}
       {/* COMMENTS MODAL */}
-      {/* --------------------------------------------------------------------- */}
       <Modal
         visible={showCommentsModal}
         animationType="slide"
@@ -1206,7 +1187,6 @@ export default function TestimoniesScreen() {
         onRequestClose={() => setShowCommentsModal(false)}
       >
         <View className="flex-1 bg-black/60 justify-end">
-          {/* Outside Press Closes */}
           <TouchableOpacity
             style={{ flex: 1 }}
             activeOpacity={1}
@@ -1224,7 +1204,6 @@ export default function TestimoniesScreen() {
               elevation: 10,
             }}
           >
-            {/* Header */}
             <View className="px-6 py-4 border-b border-stone-200">
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-lg font-lexend-semibold text-gray-800">
@@ -1239,7 +1218,6 @@ export default function TestimoniesScreen() {
               </Text>
             </View>
 
-            {/* Comments List */}
             <ScrollView
               className="flex-1 px-6 py-4"
               showsVerticalScrollIndicator={false}
@@ -1303,7 +1281,6 @@ export default function TestimoniesScreen() {
               )}
             </ScrollView>
 
-            {/* Add Comment */}
             <View className="px-6 py-4 border-t border-stone-200 bg-white">
               <View className="flex-row items-center gap-3">
                 <TextInput
