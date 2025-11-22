@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   CheckCircle2,
@@ -6,31 +7,344 @@ import {
   Flame,
   Lock,
   Medal,
+  MedalIcon,
   Star,
   Trophy,
   Zap
 } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   Image,
+  ImageBackground,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  ZoomIn
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { images } from "../../utils";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+
+// Details Modal Component
+const DetailsModal = ({ visible, item, onClose, type }) => {
+  if (!item) return null;
+
+  const isQuest = type === "quest";
+  const isLocked = type === "badge" && !item.is_earned;
+
+  // Badge Specific Styles
+  const BadgeHeader = () => (
+    <ImageBackground
+      source={images.J1}
+      style={{ width: "100%", height: 200, alignItems: "center", justifyContent: "center" }}
+      imageStyle={{ opacity: 0.8 }}
+    >
+      <LinearGradient
+        colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.6)"]}
+        style={{ position: 'absolute', inset: 0 }}
+      />
+      <View className="w-24 h-24 rounded-full items-center justify-center bg-white/20 backdrop-blur-md border-2 border-white/50 shadow-lg">
+        {item.icon_url ? (
+          <Text className="text-[40px]">{item.icon_url}</Text>
+        ) : (
+          <Medal size={48} color="#FFD700" />
+        )}
+      </View>
+      <View className="absolute bottom-4 bg-black/40 px-3 py-1 rounded-full border border-white/20">
+        <Text className="text-white font-lexend-bold text-[12px] tracking-wider uppercase">
+          {item.xp_reward} XP Badge
+        </Text>
+      </View>
+    </ImageBackground>
+  );
+
+  const QuestHeader = () => (
+    <LinearGradient
+      colors={["#E0E7FF", "#C7D2FE"]}
+      style={{ padding: 32, alignItems: "center", justifyContent: "center" }}
+    >
+      <View className="w-20 h-20 rounded-full items-center justify-center bg-white/50">
+        <Trophy size={40} color="#4F46E5" />
+      </View>
+    </LinearGradient>
+  );
+
+  const LockedHeader = () => (
+    <View className="bg-gray-100 p-8 items-center justify-center h-[180px]">
+      <View className="w-20 h-20 rounded-full items-center justify-center bg-gray-200">
+        <Lock size={32} color="#9CA3AF" />
+      </View>
+    </View>
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <BlurView
+        intensity={10}
+        tint="dark"
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 20,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          }}
+        />
+        <Pressable style={{ position: 'absolute', inset: 0 }} onPress={onClose} />
+
+        <Animated.View
+          entering={ZoomIn.duration(300)}
+          className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.2,
+            shadowRadius: 20,
+            elevation: 10,
+          }}
+        >
+          {/* Header */}
+          {isQuest ? <QuestHeader /> : (isLocked ? <LockedHeader /> : <BadgeHeader />)}
+
+          {/* Content */}
+          <View className="p-6">
+            <Text className="text-[24px] font-lexend-bold text-gray-900 text-center mb-2">
+              {item.title || item.name}
+            </Text>
+
+            <Text className="text-[15px] font-lexend text-gray-600 text-center mb-6 leading-[22px]">
+              {item.description}
+            </Text>
+
+            {/* Stats/Progress */}
+            <View className="bg-stone-50 rounded-2xl p-4 mb-6">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-[13px] font-lexend-medium text-gray-500">Requirement</Text>
+                <Text className="text-[13px] font-lexend-semibold text-gray-800">
+                  {item.requirement_count || item.requirement_value} {item.requirement_type?.replace('_', ' ')}
+                </Text>
+              </View>
+
+              {isQuest && (
+                <View className="mt-2">
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <Text className="text-[12px] font-lexend-medium text-gray-500">Progress</Text>
+                    <Text className="text-[12px] font-lexend-semibold text-indigo-600">
+                      {Math.floor((item.progress / item.requirement_count) * 100)}%
+                    </Text>
+                  </View>
+                  <View className="h-2 bg-stone-200 rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-indigo-500 rounded-full"
+                      style={{ width: `${Math.min((item.progress / item.requirement_count) * 100, 100)}%` }}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {!isQuest && !isLocked && (
+                <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-stone-200">
+                  <Text className="text-[12px] font-lexend-medium text-gray-500">Earned On</Text>
+                  <Text className="text-[12px] font-lexend-semibold text-indigo-600">
+                    {new Date(item.earned_at).toLocaleDateString()}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Pressable
+              onPress={onClose}
+              className="bg-gray-900 w-full py-4 rounded-[20px] active:scale-95"
+            >
+              <Text className="text-white text-center font-lexend-semibold text-[16px]">
+                Close
+              </Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      </BlurView>
+    </Modal>
+  );
+};
+
+// Celebration Modal Component
+const CelebrationModal = ({ visible, item, onClose, type }) => {
+  if (!item) return null;
+
+  // Animation values
+  const scale = useSharedValue(0);
+  const rotate = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      scale.value = withSequence(
+        withSpring(1.2),
+        withSpring(1)
+      );
+      rotate.value = withRepeat(
+        withSequence(
+          withSpring(0.1),
+          withSpring(-0.1)
+        ),
+        -1,
+        true
+      );
+    } else {
+      scale.value = 0;
+      rotate.value = 0;
+    }
+  }, [visible]);
+
+  const animatedImageStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value },
+        { rotate: `${rotate.value}rad` }
+      ],
+    };
+  });
+
+  const isQuest = type === "quest";
+  const gradientColors = isQuest
+    ? ["#E0E7FF", "#C7D2FE"] // Blue/Indigo for Quest
+    : ["#FEF3C7", "#FDE68A"]; // Amber/Gold for Badge
+
+  const iconColor = isQuest ? "#4F46E5" : "#D97706";
+  const textColor = isQuest ? "text-indigo-900" : "text-amber-900";
+  const accentColor = isQuest ? "text-indigo-600" : "text-amber-600";
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <BlurView
+        intensity={100} // High intensity to mask background colors
+        tint="extralight" // Thick material to provide a neutral white base
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 20,
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          }}
+        />
+        <Animated.View
+          entering={ZoomIn.duration(500)}
+          className="w-full max-w-sm items-center"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 20 },
+            shadowOpacity: 0.15,
+            shadowRadius: 30,
+            elevation: 20,
+          }}
+        >
+          {/* Card Container */}
+          <View className="bg-white rounded-[40px] overflow-hidden w-full items-center pb-8">
+
+            {/* Header Background */}
+            <LinearGradient
+              colors={gradientColors}
+              style={{ width: "100%", height: 140, alignItems: "center", justifyContent: "center" }}
+            >
+              {/* Animated Mascot */}
+              <Animated.View style={[{ marginTop: 40 }, animatedImageStyle]}>
+                <Image
+                  source={images.Char}
+                  style={{ width: 140, height: 140 }}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+            </LinearGradient>
+
+            <View className="px-8 pt-12 items-center w-full">
+              <Text className={`text-[28px] font-lexend-bold ${textColor} text-center mb-2`}>
+                {isQuest ? "Quest Complete!" : "Badge Unlocked!"}
+              </Text>
+
+              <Text className="text-[16px] font-lexend text-gray-600 text-center mb-6 leading-[24px]">
+                You've successfully {isQuest ? "completed" : "earned"}{"\n"}
+                <Text className={`font-lexend-bold ${accentColor} text-[18px]`}>
+                  {item.title || item.name}
+                </Text>
+              </Text>
+
+              {/* Reward Badge */}
+              <View className={`px-6 py-3 rounded-2xl mb-8 flex-row items-center gap-3 ${isQuest ? "bg-indigo-50" : "bg-amber-50"}`}>
+                <View className={`p-2 rounded-full ${isQuest ? "bg-indigo-100" : "bg-amber-100"}`}>
+                  <Zap size={24} color={iconColor} fill={iconColor} />
+                </View>
+                <View>
+                  <Text className="text-[12px] font-lexend-medium text-gray-500 uppercase tracking-wider">
+                    Reward
+                  </Text>
+                  <Text className={`text-[20px] font-lexend-bold ${textColor}`}>
+                    +{item.xp_reward} XP
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={onClose}
+                className="w-full active:scale-95"
+              >
+                <LinearGradient
+                  colors={isQuest ? ["#4F46E5", "#4338CA"] : ["#F59E0B", "#D97706"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ borderRadius: 20, paddingVertical: 16, width: "100%" }}
+                >
+                  <Text className="text-white text-center font-lexend-bold text-[16px]">
+                    Awesome!
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
+      </BlurView>
+    </Modal>
+  );
+};
 
 export default function StatsScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [celebrationQueue, setCelebrationQueue] = useState([]);
+  const [currentCelebration, setCurrentCelebration] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null); // For DetailsModal
+  const shownCelebrationsRef = useRef(new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
   const [activeQuests, setActiveQuests] = useState([]);
@@ -48,11 +362,59 @@ export default function StatsScreen() {
 
   const fetchAllData = async () => {
     try {
-      await Promise.all([
+      const [userStats, questsData, badgesData] = await Promise.all([
         fetchUserStats(),
         fetchQuests(),
         fetchBadges(),
       ]);
+
+      // Check for new achievements (completed within last 5 minutes)
+      const now = new Date();
+      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60000);
+
+      console.log("Checking for celebrations...");
+      console.log("Current Time:", now.toISOString());
+      console.log("Threshold:", fiveMinutesAgo.toISOString());
+
+      const newCelebrations = [];
+
+      // Check Quests
+      questsData.forEach((q) => {
+        if (q.is_completed && q.completed_at) {
+          const completedAt = new Date(q.completed_at);
+          console.log(`Quest ${q.title} completed at:`, completedAt.toISOString());
+
+          if (
+            completedAt > fiveMinutesAgo &&
+            !shownCelebrationsRef.current.has(`quest-${q.id}`)
+          ) {
+            console.log("Queueing celebration for quest:", q.title);
+            newCelebrations.push({ type: "quest", item: q });
+            shownCelebrationsRef.current.add(`quest-${q.id}`);
+          }
+        }
+      });
+
+      // Check Badges
+      badgesData.forEach((b) => {
+        if (b.is_earned && b.earned_at) {
+          const earnedAt = new Date(b.earned_at);
+          console.log(`Badge ${b.name} earned at:`, earnedAt.toISOString());
+
+          if (
+            earnedAt > fiveMinutesAgo &&
+            !shownCelebrationsRef.current.has(`badge-${b.id}`)
+          ) {
+            console.log("Queueing celebration for badge:", b.name);
+            newCelebrations.push({ type: "badge", item: b });
+            shownCelebrationsRef.current.add(`badge-${b.id}`);
+          }
+        }
+      });
+
+      if (newCelebrations.length > 0) {
+        setCelebrationQueue((prev) => [...prev, ...newCelebrations]);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -75,10 +437,11 @@ export default function StatsScreen() {
 
     if (error) {
       console.error("Error fetching stats:", error);
-      return;
+      return null;
     }
 
     setStats(data);
+    return data;
   };
 
   const fetchQuests = async () => {
@@ -89,7 +452,7 @@ export default function StatsScreen() {
 
     if (questsError) {
       console.error("Error fetching quests:", questsError);
-      return;
+      return [];
     }
 
     const { data: userQuestsData, error: userQuestsError } = await supabase
@@ -99,7 +462,7 @@ export default function StatsScreen() {
 
     if (userQuestsError) {
       console.error("Error fetching user quests:", userQuestsError);
-      return;
+      return [];
     }
 
     // Merge data
@@ -109,11 +472,13 @@ export default function StatsScreen() {
         ...quest,
         progress: userQuest?.progress_count || 0,
         is_completed: userQuest?.is_completed || false,
-        user_quest_id: userQuest?.id
+        user_quest_id: userQuest?.id,
+        completed_at: userQuest?.completed_at // Add completed_at for celebration check
       };
     });
 
     setActiveQuests(mergedQuests);
+    return mergedQuests;
   };
 
   const fetchBadges = async () => {
@@ -125,7 +490,7 @@ export default function StatsScreen() {
 
     if (badgesError) {
       console.error("Error fetching badges:", badgesError);
-      return;
+      return [];
     }
 
     // 2. Fetch user's earned badges
@@ -136,7 +501,7 @@ export default function StatsScreen() {
 
     if (userBadgesError) {
       console.error("Error fetching user badges:", userBadgesError);
-      return;
+      return [];
     }
 
     // 3. Merge to create a list of all badges with "earned" status
@@ -150,6 +515,7 @@ export default function StatsScreen() {
     });
 
     setAllBadges(mergedBadges);
+    return mergedBadges;
   };
 
   const calculateLevelProgress = () => {
@@ -173,6 +539,26 @@ export default function StatsScreen() {
       current: stats.total_xp,
       next: nextLevelThreshold
     };
+  };
+
+  // Handle Celebration Queue
+  useEffect(() => {
+    if (!currentCelebration && celebrationQueue.length > 0) {
+      setCurrentCelebration(celebrationQueue[0]);
+      setCelebrationQueue((prev) => prev.slice(1));
+    }
+  }, [currentCelebration, celebrationQueue]);
+
+  const closeCelebration = () => {
+    setCurrentCelebration(null);
+  };
+
+  const openDetails = (item, type) => {
+    setSelectedItem({ item, type });
+  };
+
+  const closeDetails = () => {
+    setSelectedItem(null);
   };
 
   if (loading && !stats) {
@@ -402,7 +788,12 @@ export default function StatsScreen() {
                 </View>
                 {dailyQuests.length > 0 ? (
                   dailyQuests.slice(0, 2).map(quest => (
-                    <QuestCard key={quest.id} quest={quest} compact />
+                    <QuestCard
+                      key={quest.id}
+                      quest={quest}
+                      compact
+                      onPress={() => openDetails(quest, 'quest')}
+                    />
                   ))
                 ) : (
                   <Text className="text-gray-500 font-lexend-light italic px-1">
@@ -489,7 +880,11 @@ export default function StatsScreen() {
                         Daily Quests
                       </Text>
                       {dailyQuests.map((quest) => (
-                        <QuestCard key={quest.id} quest={quest} />
+                        <QuestCard
+                          key={quest.id}
+                          quest={quest}
+                          onPress={() => openDetails(quest, 'quest')}
+                        />
                       ))}
                     </View>
                   )}
@@ -501,7 +896,11 @@ export default function StatsScreen() {
                         Weekly Quests
                       </Text>
                       {weeklyQuests.map((quest) => (
-                        <QuestCard key={quest.id} quest={quest} />
+                        <QuestCard
+                          key={quest.id}
+                          quest={quest}
+                          onPress={() => openDetails(quest, 'quest')}
+                        />
                       ))}
                     </View>
                   )}
@@ -530,6 +929,7 @@ export default function StatsScreen() {
                         badge={badge}
                         earnedAt={badge.earned_at}
                         isLocked={false}
+                        onPress={() => openDetails(badge, 'badge')}
                       />
                     ))}
                   </View>
@@ -547,6 +947,7 @@ export default function StatsScreen() {
                       key={badge.id}
                       badge={badge}
                       isLocked={true}
+                      onPress={() => openDetails(badge, 'badge')}
                     />
                   ))}
                 </View>
@@ -555,18 +956,34 @@ export default function StatsScreen() {
           )}
         </ScrollView>
       </SafeAreaView>
+      {/* Celebration Modal */}
+      <CelebrationModal
+        visible={!!currentCelebration}
+        item={currentCelebration?.item}
+        type={currentCelebration?.type}
+        onClose={closeCelebration}
+      />
+
+      {/* Details Modal */}
+      <DetailsModal
+        visible={!!selectedItem}
+        item={selectedItem?.item}
+        type={selectedItem?.type}
+        onClose={closeDetails}
+      />
     </LinearGradient>
   );
 }
 
 // Quest Card Component
-function QuestCard({ quest, compact = false }) {
+function QuestCard({ quest, compact = false, onPress }) {
   const progress = (quest.progress / quest.requirement_count) * 100 || 0;
   const isComplete = quest.is_completed || progress >= 100;
 
   return (
-    <View
-      className={`bg-white rounded-[24px] p-5 mb-3 border border-stone-200/40 ${compact ? 'py-4' : ''}`}
+    <Pressable
+      onPress={onPress}
+      className={`bg-white rounded-[24px] p-5 mb-3 border border-stone-200/40 active:scale-[0.98] transition-transform ${compact ? 'py-4' : ''}`}
       style={{
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 3 },
@@ -649,12 +1066,12 @@ function QuestCard({ quest, compact = false }) {
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 // Badge Card Component
-function BadgeCard({ badge, earnedAt, isLocked = false }) {
+function BadgeCard({ badge, earnedAt, isLocked = false, onPress }) {
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -665,66 +1082,83 @@ function BadgeCard({ badge, earnedAt, isLocked = false }) {
     });
   };
 
-  // Infer rarity/color based on XP reward or category
-  const getBadgeColor = () => {
-    if (isLocked) return ["#E5E7EB", "#D1D5DB"]; // Gray for locked
-    if (badge.xp_reward >= 100) return ["#FBBF24", "#F59E0B"]; // Legendary/Gold
-    if (badge.xp_reward >= 50) return ["#C084FC", "#A855F7"]; // Epic/Purple
-    if (badge.xp_reward >= 20) return ["#93C5FD", "#60A5FA"]; // Rare/Blue
-    return ["#D1D5DB", "#9CA3AF"]; // Common/Gray
-  };
+  if (isLocked) {
+    return (
+      <Pressable
+        onPress={onPress}
+        className="bg-white rounded-[24px] p-4 border border-stone-100 active:scale-[0.98] transition-transform"
+        style={{
+          width: (width - 60) / 2,
+        }}
+      >
+        <View className="items-center mb-4 opacity-50">
+          <View className="w-[72px] h-[72px] rounded-full items-center justify-center bg-gray-100 mb-2">
+            {badge.icon_url ? (
+              <Text className="text-[32px] opacity-40">{badge.icon_url}</Text>
+            ) : (
+              <Lock size={28} color="#9CA3AF" />
+            )}
+          </View>
+        </View>
+        <Text className="text-[15px] font-lexend-semibold text-center mb-1 leading-tight text-gray-400">
+          {badge.name}
+        </Text>
+        <View className="rounded-full py-1.5 px-2 bg-stone-100 mt-2">
+          <Text className="text-[10px] font-lexend-medium text-center text-gray-400">
+            Reward: {badge.xp_reward} XP
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
 
+  // Earned Badge Design
   return (
-    <View
-      className={`bg-white rounded-[20px] p-4 border ${isLocked ? 'border-stone-100 opacity-70' : 'border-stone-200/40'}`}
+    <Pressable
+      onPress={onPress}
+      className="rounded-[24px] overflow-hidden active:scale-[0.98] transition-transform"
       style={{
         width: (width - 60) / 2,
+        height: 180,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 5,
       }}
     >
-      {/* Badge Icon with Gradient Background */}
-      <View className="items-center mb-3">
+      <ImageBackground
+        source={images.J1}
+        style={{ flex: 1, padding: 16, alignItems: 'center', justifyContent: 'space-between' }}
+        imageStyle={{ borderRadius: 24 }}
+      >
+        {/* Gradient Overlay */}
         <LinearGradient
-          colors={getBadgeColor()}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 100,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 8,
-          }}
-        >
-          {isLocked ? (
-            <Lock size={24} color="#9CA3AF" />
-          ) : badge.icon_url ? (
+          colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.7)"]}
+          style={{ position: 'absolute', inset: 0, borderRadius: 24 }}
+        />
+
+        {/* Icon */}
+        <View className="w-16 h-16 rounded-full items-center justify-center bg-white/20 backdrop-blur-sm border border-white/40 mt-2">
+          {badge.icon_url ? (
             <Text className="text-[32px]">{badge.icon_url}</Text>
           ) : (
-            <Medal size={32} color="#fff" />
+            <MedalIcon size={32} color="#FFD700" />
           )}
-        </LinearGradient>
-      </View>
+        </View>
 
-      {/* Badge Info */}
-      <Text className={`text-[14px] font-lexend-semibold text-center mb-1 ${isLocked ? 'text-gray-400' : 'text-gray-800'}`}>
-        {badge.name}
-      </Text>
-      <Text className="text-[11px] font-lexend-light text-gray-500 text-center leading-[15px] mb-2" numberOfLines={2}>
-        {badge.description}
-      </Text>
-
-      {/* Earned Date or Requirement */}
-      <View className={`rounded-full py-1.5 px-2 ${isLocked ? 'bg-stone-100' : 'bg-stone-50'}`}>
-        <Text className={`text-[10px] font-lexend-medium text-center ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
-          {isLocked ? `Reward: ${badge.xp_reward} XP` : `Earned ${formatDate(earnedAt)}`}
-        </Text>
-      </View>
-    </View>
+        {/* Info */}
+        <View className="w-full items-center">
+          <Text className="text-[16px] font-lexend-bold text-white text-center leading-tight mb-1 shadow-sm">
+            {badge.name}
+          </Text>
+          <View className="bg-white/20 px-2 py-1 rounded-full border border-white/10">
+            <Text className="text-[10px] font-lexend-medium text-white/90">
+              {formatDate(earnedAt)}
+            </Text>
+          </View>
+        </View>
+      </ImageBackground>
+    </Pressable>
   );
 }

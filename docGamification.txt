@@ -1,0 +1,119 @@
+Gamification System Database Documentation
+This document provides a complete reference for the database schema, functions, and triggers used in the Biblegram Gamification System.
+
+1. Database Tables
+gamification_profiles
+Stores user progress and stats.
+
+user_id (UUID, PK): References profiles.id.
+total_xp (INT): Total experience points earned.
+current_level (INT): Current user level (calculated from XP).
+total_points (INT): Total points earned (can be used for currency later).
+current_streak (INT): Current daily streak count.
+longest_streak (INT): Longest streak achieved.
+last_active_date (DATE): The last date the user performed a qualifying action.
+total_reads (INT): Total verses read/viewed.
+total_likes (INT): Total verses liked.
+total_saves (INT): Total verses saved.
+total_shares (INT): Total verses shared.
+total_comments (INT): Total comments made.
+point_history
+Tracks daily points to prevent spam (one interaction per verse per day).
+
+id
+ (UUID, PK)
+user_id (UUID): References profiles.id.
+verse_id (UUID): References bible_verses.id.
+interaction_type (TEXT): 'read', 'like', 'save', 'share', 'comment', 'view'.
+points_awarded (INT): Points given for this action.
+interaction_date (DATE): The date of interaction.
+Constraint: Unique on 
+(user_id, verse_id, interaction_type, interaction_date)
+.
+quests
+Defines available quests.
+
+id
+ (UUID, PK)
+title (TEXT): Quest name (e.g., "Daily Reader").
+description (TEXT): Quest description.
+quest_type (TEXT): 'daily', 'weekly', 'monthly'.
+requirement_type (TEXT): Interaction type required ('read', 'like', etc.).
+requirement_count (INT): Number of actions needed.
+xp_reward (INT): XP given on completion.
+is_active (BOOL): Whether the quest is currently available.
+user_quests
+Tracks user progress on quests.
+
+id
+ (UUID, PK)
+user_id (UUID): References profiles.id.
+quest_id (UUID): References quests.id.
+progress_count (INT): Current progress (e.g., 2/5).
+is_completed (BOOL): Whether completed.
+quest_date (DATE): Date the quest was started (for daily resets).
+updated_at (TIMESTAMPTZ): Last update time.
+completed_at (TIMESTAMPTZ): Completion time.
+badges
+Defines available badges.
+
+id
+ (UUID, PK)
+name (TEXT): Badge name.
+description (TEXT): Badge description.
+category (TEXT): 'reading', 'streak', 'social', 'level'.
+icon_url (TEXT): Emoji or URL for the badge icon.
+requirement_type (TEXT): Counter to check ('total_reads', 'streak_days', etc.).
+requirement_value (INT): Value needed to earn (e.g., 100).
+xp_reward (INT): XP given on earning.
+user_badges
+Tracks earned badges.
+
+id
+ (UUID, PK)
+user_id (UUID): References profiles.id.
+badge_id (UUID): References badges.id.
+earned_at (TIMESTAMPTZ): When the badge was earned.
+2. Functions (PL/PGSQL)
+calculate_level(p_xp INTEGER)
+Returns: INTEGER
+Logic: Calculates level based on XP formula: Level = SQRT(XP / 150).
+check_level_up(p_user_id UUID)
+Logic: Checks if the user's current XP warrants a higher level. If yes, updates current_level.
+award_xp(p_user_id UUID, p_amount INTEGER)
+Logic: Adds XP and Points to the user's profile, then calls check_level_up.
+update_streak(p_user_id UUID)
+Logic:
+Checks last_active_date.
+If last_active_date was yesterday, increments current_streak.
+If last_active_date was older, resets current_streak to 1.
+Updates longest_streak if current exceeds it.
+update_quest_progress(p_user_id UUID, p_interaction_type TEXT)
+Logic:
+Finds active quests matching the interaction_type.
+Mapping: Maps 'view' interactions to 'read' quests.
+Updates user_quests progress.
+If progress meets requirement, marks as complete and awards XP.
+check_badges(p_user_id UUID)
+Logic:
+Loops through all unearned badges.
+Checks if the user's stats (e.g., total_reads) meet the requirement_value.
+If met, inserts into user_badges and awards XP.
+3. Triggers
+handle_gamification_event
+Trigger On: INSERT on verse_interactions (or wherever you track raw interactions, currently simulated via direct calls or a wrapper).
+Logic Flow:
+Determine Points: Assigns points based on interaction type (Read=5, Like=2, etc.).
+Daily Limit Check: Inserts into point_history. If duplicate (same action on same verse today), aborts to prevent spam.
+Update Streak: Calls update_streak (Must be done BEFORE updating last_active_date).
+Update Profile: Updates total_xp, total_points, last_active_date, and increments specific counters (total_reads, etc.).
+Check Level: Calls check_level_up.
+Update Quests: Calls update_quest_progress.
+Check Badges: Calls check_badges.
+4. Integration Notes
+Views: When a 
+VerseCard
+ is viewed, the frontend calls the backend to record a 'view' interaction.
+Shares: When Share.share() is successful, the frontend records a 'share' interaction.
+Likes/Saves: Toggling these buttons records 'like'/'save' interactions.
+Resetting: Daily quests reset based on the quest_date logic (new entries created for new days).
