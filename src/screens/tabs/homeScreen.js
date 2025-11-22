@@ -1,28 +1,23 @@
 // HomeScreen.js - Updated with Stories Header
-import React, { useEffect, useRef, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Text,
-  View,
-  Pressable,
-  ActivityIndicator,
-  ScrollView,
-  Dimensions,
-} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Calendar, Bell, Menu, Flame } from "lucide-react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
+import { Bell, Calendar, Flame } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Dimensions,
+  Pressable,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import PrayerWallScreen from "../../components/PrayerCard";
+import { StoryCircle } from "../../components/StoriesCard";
+import TestimoniesScreen from "../../components/TestimonalCard";
+import { VerseCard } from "../../components/VerseCard";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
-import { VerseCard } from "../../components/VerseCard";
-import { StoryCircle } from "../../components/StoriesCard";
-import PrayerWallScreen from "../../components/PrayerCard";
-import TestimoniesScreen from "../../components/TestimonalCard";
-import { TouchableOpacity } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -109,6 +104,8 @@ export default function HomeScreen() {
             .eq("user_id", user.id)
             .eq("interaction_type", "save"),
           supabase.from("verse_interaction_counts").select("*"),
+          // Also fetch user's view history for today to avoid duplicate view counting if needed
+          // For now, we'll just rely on the backend to handle unique views per day
         ]);
 
       if (versesResult.error) {
@@ -207,6 +204,38 @@ export default function HomeScreen() {
 
   const toggleSave = (verseId) => {
     toggleInteraction(verseId, "save", savedVerses, setSavedVerses);
+  };
+
+  const handleShare = async (verseId) => {
+    // Shares are not toggled, they are just recorded
+    // Optimistic update for count
+    setVerseCounts((prev) => ({
+      ...prev,
+      [verseId]: {
+        ...prev[verseId],
+        share_count: (prev[verseId]?.share_count || 0) + 1,
+      },
+    }));
+
+    try {
+      const { error } = await supabase.from("verse_interactions").insert({
+        user_id: user.id,
+        verse_id: verseId,
+        interaction_type: "share",
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error recording share:", error);
+      // Revert count on error
+      setVerseCounts((prev) => ({
+        ...prev,
+        [verseId]: {
+          ...prev[verseId],
+          share_count: (prev[verseId]?.share_count || 0) - 1,
+        },
+      }));
+    }
   };
 
   const getVerseCount = (verseId) => {
@@ -318,6 +347,10 @@ export default function HomeScreen() {
                   counts={getVerseCount(verse.id)}
                   onToggleLike={toggleLike}
                   onToggleSave={toggleSave}
+                  onShare={handleShare}
+                  // Trigger view recording when card is rendered (simple approach)
+                  // In a real app, use onViewableItemsChanged for better accuracy
+                  onView={() => toggleInteraction(verse.id, "view", new Set(), () => { })}
                 />
               ))}
               <PrayerWallScreen />

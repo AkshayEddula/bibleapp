@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from "react";
-import {
-  Text,
-  View,
-  Pressable,
-  TextInput,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
-import {
-  Heart,
-  Bookmark,
-  MessageCircle,
-  Share2,
-  Send,
-} from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../lib/supabase";
+import {
+  Bookmark,
+  Eye,
+  Heart,
+  MessageCircle,
+  Send,
+  Share2,
+} from "lucide-react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  Share,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 export const VerseCard = ({
   verse,
@@ -26,6 +28,8 @@ export const VerseCard = ({
   counts,
   onToggleLike,
   onToggleSave,
+  onView,
+  onShare,
 }) => {
   const { user } = useAuth();
   const [localSaved, setLocalSaved] = useState(isSaved);
@@ -34,6 +38,13 @@ export const VerseCard = ({
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+
+  // Trigger view recording on mount
+  useEffect(() => {
+    if (onView) {
+      onView();
+    }
+  }, []);
 
   const handleSave = () => {
     setLocalSaved(!localSaved);
@@ -158,9 +169,31 @@ export const VerseCard = ({
     }
   };
 
-  const handleShare = () => {
-    // TODO: Implement share functionality
-    console.log("Share verse:", verse.id);
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `"${verse.content}" - ${verse.book} ${verse.chapter}:${verse.verse}\n\nShared via LumiVerse ✨`,
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // shared with activity type of result.activityType
+          console.log("Shared via", result.activityType);
+        } else {
+          // shared
+          console.log("Shared successfully");
+        }
+
+        // Record the share interaction
+        if (onShare) {
+          onShare(verse.id);
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // dismissed
+      }
+    } catch (error) {
+      console.error("Error sharing:", error.message);
+    }
   };
 
   return (
@@ -281,6 +314,14 @@ export const VerseCard = ({
                 strokeWidth={2}
               />
             </Pressable>
+
+            {/* View Count (Read Only) */}
+            <View className="flex-row items-center gap-2 px-3 py-2">
+              <Eye size={20} color="#9ca3af" strokeWidth={2} />
+              <Text className="text-[13px] font-lexend-medium text-gray-400">
+                {counts.view_count || 0}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
