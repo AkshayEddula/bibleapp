@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import CelebrationModal from "../../components/CelebrationModal";
 import PrayerWallScreen from "../../components/PrayerCard";
 import { StoryCircle } from "../../components/StoriesCard";
+import StoryViewerModal from "../../components/StoryViewerModal";
 import StreakModal from "../../components/StreakModal";
 import TestimoniesScreen from "../../components/TestimonalCard";
 import { VerseCard } from "../../components/VerseCard";
@@ -28,47 +29,32 @@ const { width } = Dimensions.get("window");
 const storyTags = [
   {
     id: 1,
+    tag: "Strength",
+    color: ["#FF9A9E", "#FECFEF"],
+    icon: "💪",
+    hasNew: true,
+  },
+  {
+    id: 2,
     tag: "Faith",
     color: ["#FEE8A0", "#F9C846"],
     icon: "✨",
     hasNew: true,
   },
   {
-    id: 2,
-    tag: "Wisdom",
-    color: ["#E0C3FC", "#8EC5FC"],
-    icon: "📖",
-    hasNew: true,
-  },
-  {
     id: 3,
-    tag: "Hope",
-    color: ["#FFE5B4", "#FFB347"],
-    icon: "🌤️",
-    hasNew: false,
-  },
-  {
-    id: 4,
     tag: "Love",
     color: ["#FFD6E8", "#FF9ECD"],
     icon: "💛",
     hasNew: true,
   },
   {
-    id: 5,
-    tag: "Peace",
+    id: 4,
+    tag: "Encouragement",
     color: ["#C1E1C1", "#A8E6CF"],
-    icon: "🕊️",
-    hasNew: false,
-  },
-  {
-    id: 6,
-    tag: "Grace",
-    color: ["#F6D5F7", "#E5B3E6"],
-    icon: "🙏",
+    icon: "🎯",
     hasNew: true,
   },
-
 ];
 
 // Achievement Toast Component - REMOVED
@@ -83,6 +69,16 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("foryou"); // 'foryou' | 'verses'
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  const FILTERS = [
+    "All",
+    "Matthew", "Mark", "Luke", "John", "Acts",
+    "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians",
+    "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians",
+    "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews", "James",
+    "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation"
+  ];
 
   // Pagination State
   const [page, setPage] = useState(0);
@@ -101,19 +97,34 @@ export default function HomeScreen() {
     quests: []
   });
 
+  // Story Viewer State
+  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
+  const [storyVerses, setStoryVerses] = useState([]);
+  const [selectedStoryTag, setSelectedStoryTag] = useState(null);
+  const [loadingStoryTag, setLoadingStoryTag] = useState(null);
+
   const fetchedOnce = useRef(false);
 
   useEffect(() => {
     if (!isUserLoggedIn) return;
-    if (fetchedOnce.current) return;
-    fetchedOnce.current = true;
 
-    initializeData();
+    // Initial Data Fetch
+    if (!fetchedOnce.current) {
+      fetchedOnce.current = true;
+      initializeData();
+    }
 
     // Start polling for achievements
     const interval = setInterval(checkAchievements, 10000); // Check every 10s
     return () => clearInterval(interval);
   }, [isUserLoggedIn]);
+
+  // Effect to refetch when filter changes
+  useEffect(() => {
+    if (fetchedOnce.current) {
+      fetchVerses(0, activeFilter);
+    }
+  }, [activeFilter]);
 
   const checkAchievements = async () => {
     if (!user) return;
@@ -159,16 +170,21 @@ export default function HomeScreen() {
     navigation.navigate('Stats'); // Navigate to Stats tab
   };
 
-  const fetchVerses = async (pageNumber) => {
+  const fetchVerses = async (pageNumber = 0, filter = "All") => {
     try {
-      const from = pageNumber * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      if (pageNumber === 0) setLoading(true);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("bible_verses")
         .select("*")
-        .range(from, to)
-        .order('created_at', { ascending: false }); // Ensure consistent order
+        .range(pageNumber * PAGE_SIZE, (pageNumber + 1) * PAGE_SIZE - 1);
+
+      // Apply Filters
+      if (filter !== "All") {
+        query = query.eq("book", filter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -179,24 +195,23 @@ export default function HomeScreen() {
       if (pageNumber === 0) {
         setVerses(data);
       } else {
-        setVerses(prev => [...prev, ...data]);
+        setVerses((prev) => [...prev, ...data]);
       }
-
-      return data;
     } catch (err) {
-      console.error("Error fetching verses:", err);
       setError(err.message);
-      return [];
+      console.error("Error fetching verses:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const initializeData = async () => {
-    setLoading(true);
-    setError(null);
-
     try {
+      setLoading(true);
+      setError(null);
+
       // Fetch initial verses
-      const initialVerses = await fetchVerses(0);
+      await fetchVerses(0, activeFilter);
 
       const [likesResult, savesResult, countsResult, viewsResult] =
         await Promise.all([
@@ -255,7 +270,7 @@ export default function HomeScreen() {
     if (activeTab === 'verses') {
       const nextPage = page + 1;
       setPage(nextPage);
-      await fetchVerses(nextPage);
+      await fetchVerses(nextPage, activeFilter);
     }
   };
 
@@ -464,9 +479,63 @@ export default function HomeScreen() {
     );
   };
 
-  const handleStoryPress = (tag) => {
+  const handleStoryPress = async (tag) => {
     console.log(`Pressed ${tag} story`);
-    // Navigate to story viewer or filter verses by tag
+    setSelectedStoryTag(tag);
+    setLoadingStoryTag(tag);
+
+    try {
+      // 1. Get Tag ID
+      const { data: tagData, error: tagError } = await supabase
+        .from('verse_tags')
+        .select('id')
+        .ilike('name', tag)
+        .single();
+
+      if (tagError || !tagData) {
+        console.log('Tag not found:', tag);
+        setLoadingStoryTag(null);
+        return;
+      }
+
+      // 2. Get Verse IDs from Map
+      const { data: mapData, error: mapError } = await supabase
+        .from('bible_verse_tag_map')
+        .select('verse_id')
+        .eq('tag_id', tagData.id)
+        .limit(10);
+
+      if (mapError || !mapData || mapData.length === 0) {
+        console.log('No verses found for tag:', tag);
+        setLoadingStoryTag(null);
+        return;
+      }
+
+      // Shuffle array to get random 3 from the 10
+      const shuffled = mapData.sort(() => 0.5 - Math.random());
+      const selectedIds = shuffled.slice(0, 3).map(m => m.verse_id);
+
+      // 3. Fetch Verses
+      const { data, error } = await supabase
+        .from("bible_verses")
+        .select("*")
+        .in('id', selectedIds);
+
+      if (error) throw error;
+
+      // Add the tag to the verses for display
+      const stories = data.map(v => ({
+        ...v,
+        tag: tag
+      }));
+
+      setStoryVerses(stories);
+      setStoryViewerVisible(true);
+    } catch (err) {
+      console.error("Error fetching story verses:", err);
+    } finally {
+      setLoadingStoryTag(null);
+    }
   };
 
   const renderHeader = () => (
@@ -515,6 +584,7 @@ export default function HomeScreen() {
               color={story.color}
               icon={story.icon}
               hasNew={story.hasNew}
+              isLoading={loadingStoryTag === story.tag}
               onPress={() => handleStoryPress(story.tag)}
             />
           ))}
@@ -546,6 +616,42 @@ export default function HomeScreen() {
           )}
         </Pressable>
       </View>
+
+      {/* Filters (Only for Verses Tab) */}
+      {activeTab === "verses" && (
+        <View className="mb-4">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
+          >
+            {FILTERS.map((filter) => (
+              <Pressable
+                key={filter}
+                onPress={() => {
+                  if (activeFilter !== filter) {
+                    setActiveFilter(filter);
+                    setPage(0); // Reset page to trigger new fetch
+                    setVerses([]); // Clear current list
+                    setHasMore(true);
+                  }
+                }}
+                className={`px-4 py-2 rounded-full border ${activeFilter === filter
+                    ? "bg-gray-900 border-gray-900"
+                    : "bg-white border-gray-200"
+                  }`}
+              >
+                <Text
+                  className={`font-lexend-medium text-sm ${activeFilter === filter ? "text-white" : "text-gray-600"
+                    }`}
+                >
+                  {filter}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
 
 
@@ -703,6 +809,13 @@ export default function HomeScreen() {
           streak={streakData.current}
           history={streakData.history}
           quests={streakData.quests}
+        />
+
+        {/* Story Viewer Modal */}
+        <StoryViewerModal
+          visible={storyViewerVisible}
+          onClose={() => setStoryViewerVisible(false)}
+          stories={storyVerses}
         />
       </SafeAreaView>
     </LinearGradient>

@@ -1,12 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Pressable, View, Text } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
 
-export function StoryCircle({ tag, color, icon, hasNew, onPress }) {
+export function StoryCircle({ tag, color, icon, hasNew, onPress, isLoading }) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -27,6 +27,7 @@ export function StoryCircle({ tag, color, icon, hasNew, onPress }) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       className="items-center mr-4"
+      disabled={isLoading}
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
@@ -46,7 +47,11 @@ export function StoryCircle({ tag, color, icon, hasNew, onPress }) {
           }}
         >
           <View className="w-full h-full bg-white rounded-full items-center justify-center">
-            <Text className="text-[28px]">{icon}</Text>
+            {isLoading ? (
+              <ActivityIndicator color={color[1]} />
+            ) : (
+              <Text className="text-[28px]">{icon}</Text>
+            )}
           </View>
         </LinearGradient>
       </Animated.View>
