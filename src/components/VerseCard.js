@@ -30,6 +30,7 @@ export const VerseCard = ({
   onToggleSave,
   onView,
   onShare,
+  headerText = "Daily Verse", // Default header
 }) => {
   const { user } = useAuth();
   const [localSaved, setLocalSaved] = useState(isSaved);
@@ -220,7 +221,7 @@ export const VerseCard = ({
         >
           <View className="flex-row items-center gap-2">
             <Text className="font-lexend-medium text-[17px] text-amber-800">
-              Verse of The Day
+              {headerText}
             </Text>
             <View className="w-1 h-5 bg-amber-400 rounded-full" />
             <Text className="font-lexend-semibold text-amber-900 text-[14px]">

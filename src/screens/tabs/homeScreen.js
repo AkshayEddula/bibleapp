@@ -1,11 +1,12 @@
 // HomeScreen.js - Updated with Stories Header
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bell, Calendar } from "lucide-react-native";
+import { Bell, Calendar, Flame } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Pressable,
   ScrollView,
   Text,
@@ -81,6 +82,12 @@ export default function HomeScreen() {
   const [verseCounts, setVerseCounts] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("foryou"); // 'foryou' | 'verses'
+
+  // Pagination State
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 10;
 
   // Notification State
   const [notification, setNotification] = useState(null);
@@ -152,14 +159,47 @@ export default function HomeScreen() {
     navigation.navigate('Stats'); // Navigate to Stats tab
   };
 
+  const fetchVerses = async (pageNumber) => {
+    try {
+      const from = pageNumber * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from("bible_verses")
+        .select("*")
+        .range(from, to)
+        .order('created_at', { ascending: false }); // Ensure consistent order
+
+      if (error) throw error;
+
+      if (data.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+
+      if (pageNumber === 0) {
+        setVerses(data);
+      } else {
+        setVerses(prev => [...prev, ...data]);
+      }
+
+      return data;
+    } catch (err) {
+      console.error("Error fetching verses:", err);
+      setError(err.message);
+      return [];
+    }
+  };
+
   const initializeData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [versesResult, likesResult, savesResult, countsResult] =
+      // Fetch initial verses
+      const initialVerses = await fetchVerses(0);
+
+      const [likesResult, savesResult, countsResult, viewsResult] =
         await Promise.all([
-          supabase.from("bible_verses").select("*").limit(1),
           supabase
             .from("verse_interactions")
             .select("verse_id")
@@ -171,15 +211,12 @@ export default function HomeScreen() {
             .eq("user_id", user.id)
             .eq("interaction_type", "save"),
           supabase.from("verse_interaction_counts").select("*"),
-          // Also fetch user's view history for today to avoid duplicate view counting if needed
-          // For now, we'll just rely on the backend to handle unique views per day
+          supabase
+            .from("verse_interactions")
+            .select("verse_id")
+            .eq("user_id", user.id)
+            .eq("interaction_type", "view"),
         ]);
-
-      if (versesResult.error) {
-        setError(versesResult.error.message);
-      } else {
-        setVerses(versesResult.data);
-      }
 
       if (likesResult.data) {
         setLikedVerses(new Set(likesResult.data.map((item) => item.verse_id)));
@@ -187,6 +224,10 @@ export default function HomeScreen() {
 
       if (savesResult.data) {
         setSavedVerses(new Set(savesResult.data.map((item) => item.verse_id)));
+      }
+
+      if (viewsResult.data) {
+        setViewedVerses(new Set(viewsResult.data.map((item) => item.verse_id)));
       }
 
       if (countsResult.data) {
@@ -208,12 +249,22 @@ export default function HomeScreen() {
     }
   };
 
+  const loadMoreVerses = async () => {
+    if (!hasMore || loading) return;
+    // Only load more if we are in 'verses' tab, or if we want to support infinite scroll in 'foryou' too (but foryou is capped at 5 currently)
+    if (activeTab === 'verses') {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      await fetchVerses(nextPage);
+    }
+  };
+
   const fetchStreakData = async () => {
     try {
-      // 1. Get Current Streak
+      // 1. Get Current Streak & Last Active Date
       const { data: stats } = await supabase
         .from("gamification_profiles")
-        .select("current_streak")
+        .select("current_streak, last_active_date")
         .eq("user_id", user.id)
         .single();
 
@@ -238,9 +289,20 @@ export default function HomeScreen() {
       const history = last7Days.map(dateStr => {
         const date = new Date(dateStr);
         const dayName = date.toLocaleDateString('en-US', { weekday: 'narrow' }); // M, T, W...
+
+        // Check if this date is "active"
+        // 1. From daily_user_stats (history)
+        // 2. OR if it's today and last_active_date is today (real-time)
+        let isActive = activeDates.has(dateStr);
+
+        if (dateStr === today.toISOString().split('T')[0] && stats?.last_active_date === dateStr) {
+          isActive = true;
+        }
+
         return {
           day: dayName,
-          active: activeDates.has(dateStr)
+          active: isActive,
+          isToday: dateStr === today.toISOString().split('T')[0]
         };
       });
 
@@ -397,6 +459,7 @@ export default function HomeScreen() {
         comment_count: 0,
         save_count: 0,
         share_count: 0,
+        view_count: 0,
       }
     );
   };
@@ -406,6 +469,205 @@ export default function HomeScreen() {
     // Navigate to story viewer or filter verses by tag
   };
 
+  const renderHeader = () => (
+    <>
+      {/* Header */}
+      <View className="px-6 pt-2 pb-4">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-[24px] font-lexend-medium text-gray-800">
+            lumiverse
+          </Text>
+          <View className="flex-row items-center gap-5">
+            <Pressable className="active:opacity-60">
+              <Calendar size={24} color="#1f2937" strokeWidth={2} />
+            </Pressable>
+            <Pressable
+              className="active:opacity-60 w-10 h-10 items-center justify-center"
+              onPress={() => {
+                fetchStreakData(); // Refresh data before showing
+                setStreakModalVisible(true);
+              }}
+            >
+              <Flame size={24} color={streakData.current > 0 ? "#EA580C" : "#1f2937"} fill={streakData.current > 0 ? "#EA580C" : "none"} strokeWidth={2} />
+            </Pressable>
+            <Pressable className="active:opacity-60 relative">
+              <Bell size={24} color="#1f2937" strokeWidth={2} />
+              <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      {/* Stories Section */}
+      <View className="mb-5">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 24,
+            paddingVertical: 8,
+          }}
+        >
+          {storyTags.map((story) => (
+            <StoryCircle
+              key={story.id}
+              tag={story.tag}
+              color={story.color}
+              icon={story.icon}
+              hasNew={story.hasNew}
+              onPress={() => handleStoryPress(story.tag)}
+            />
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Tab Selector */}
+      <View className="flex-row px-6 mb-4 gap-6 border-b border-gray-100 pb-2">
+        <Pressable
+          onPress={() => setActiveTab("foryou")}
+          className="items-center"
+        >
+          <Text className={`text-[16px] font-lexend-semibold ${activeTab === "foryou" ? "text-gray-900" : "text-gray-400"}`}>
+            For You
+          </Text>
+          {activeTab === "foryou" && (
+            <View className="h-1 w-full bg-yellow-400 rounded-full mt-1" />
+          )}
+        </Pressable>
+        <Pressable
+          onPress={() => setActiveTab("verses")}
+          className="items-center"
+        >
+          <Text className={`text-[16px] font-lexend-semibold ${activeTab === "verses" ? "text-gray-900" : "text-gray-400"}`}>
+            Verses
+          </Text>
+          {activeTab === "verses" && (
+            <View className="h-1 w-full bg-yellow-400 rounded-full mt-1" />
+          )}
+        </Pressable>
+      </View>
+
+
+
+      {/* Loading/Error States */}
+      {loading && page === 0 && (
+        <View className="items-center py-4">
+          <ActivityIndicator color="#F9C846" />
+          <Text className="text-gray-700 mt-2 font-lexend-light">
+            Loading verses...
+          </Text>
+        </View>
+      )}
+
+      {error && (
+        <View className="bg-red-50 p-4 rounded-2xl mb-4 border border-red-200 mx-5">
+          <Text className="text-red-600 text-center font-lexend-light">
+            {error}
+          </Text>
+        </View>
+      )}
+
+      {!loading && verses.length === 0 && !error && (
+        <View className="py-4">
+          <Text className="text-gray-700 text-center font-lexend-light">
+            No verses found.
+          </Text>
+        </View>
+      )}
+    </>
+  );
+
+  const renderFooter = () => {
+    if (activeTab === 'foryou') {
+      return (
+        <View className="px-5 pb-20">
+          <PrayerWallScreen />
+          <TestimoniesScreen />
+          <TouchableOpacity onPress={() => logout()}>
+            <Text className="text-center text-gray-400 py-4">Logout</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    } else {
+      // Verses Tab Footer
+      return (
+        <View className="py-4 pb-20">
+          {hasMore && verses.length > 0 && (
+            <ActivityIndicator color="#F9C846" />
+          )}
+        </View>
+      );
+    }
+  };
+
+  // Track viewed verses locally to prevent duplicate views in one session
+  const [viewedVerses, setViewedVerses] = useState(new Set());
+
+  const handleView = async (verseId) => {
+    if (viewedVerses.has(verseId)) return;
+
+    // Add to local set immediately
+    setViewedVerses(prev => new Set(prev).add(verseId));
+
+    // Optimistic count update
+    setVerseCounts((prev) => ({
+      ...prev,
+      [verseId]: {
+        ...prev[verseId],
+        view_count: (prev[verseId]?.view_count || 0) + 1,
+      },
+    }));
+
+    try {
+      // Check if already viewed in DB (optional, but good for data integrity if session resets)
+      // For now, we'll rely on the insert failing or just inserting. 
+      // Ideally, we should have a unique constraint on (user_id, verse_id, interaction_type) for views too, 
+      // or just insert and let the backend handle it.
+      // Given the user request "registerd once only per verse per user", 
+      // we should try to select first or rely on a unique index.
+      // Assuming we just want to record it if not present:
+
+      const { error } = await supabase.from("verse_interactions").insert({
+        user_id: user.id,
+        verse_id: verseId,
+        interaction_type: "view",
+      });
+
+      if (error) {
+        // If error is duplicate key (code 23505), it's fine, we just ignore it.
+        if (error.code !== '23505') {
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error("Error recording view:", error);
+      // We don't revert the optimistic update for views usually, as it's less critical than likes
+    }
+  };
+
+  const renderItem = ({ item }) => {
+    const counts = getVerseCount(item.id);
+    return (
+      <View className="px-5 mb-6">
+        <VerseCard
+          key={`${item.id}-${counts.view_count}`} // Force re-render when view count changes
+          verse={item}
+          isLiked={likedVerses.has(item.id)}
+          isSaved={savedVerses.has(item.id)}
+          counts={counts}
+          onToggleLike={toggleLike}
+          onToggleSave={toggleSave}
+          onShare={handleShare}
+          onView={() => handleView(item.id)}
+          headerText={activeTab === 'foryou' ? "Verse of the Day" : "Daily Verse"}
+        />
+      </View>
+    );
+  };
+
+  // Filter data based on tab
+  const listData = activeTab === 'foryou' ? verses.slice(0, 1) : verses;
+
   return (
     <LinearGradient
       colors={["#fdfcfb", "#f7f5f2", "#fdfcfb"]}
@@ -414,112 +676,18 @@ export default function HomeScreen() {
       style={{ flex: 1 }}
     >
       <SafeAreaView className="flex-1">
-        {/* Header */}
-        <View className="px-6 pt-2 pb-4">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-[24px] font-lexend-medium text-gray-800">
-              lumiverse
-            </Text>
-            <View className="flex-row items-center gap-5">
-              <Pressable className="active:opacity-60">
-                <Calendar size={24} color="#1f2937" strokeWidth={2} />
-              </Pressable>
-              <Pressable
-                className="active:opacity-60"
-                onPress={() => {
-                  fetchStreakData(); // Refresh data before showing
-                  setStreakModalVisible(true);
-                }}
-              >
-                <Text>Streak</Text>
-                {/* <Flame size={24} color={streakData.current > 0 ? "#EA580C" : "#1f2937"} fill={streakData.current > 0 ? "#EA580C" : "none"} strokeWidth={2} /> */}
-              </Pressable>
-              <Pressable className="active:opacity-60 relative">
-                <Bell size={24} color="#1f2937" strokeWidth={2} />
-                <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
-              </Pressable>
-            </View>
-          </View>
-        </View>
+        <FlatList
+          data={listData}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          extraData={verseCounts} // Force re-render when counts change
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={renderFooter}
+          showsVerticalScrollIndicator={false}
+          onEndReached={loadMoreVerses}
+          onEndReachedThreshold={0.5}
+        />
 
-        {/* Stories Section */}
-        <View className="mb-5">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: 24,
-              paddingVertical: 8,
-            }}
-          >
-            {storyTags.map((story) => (
-              <StoryCircle
-                key={story.id}
-                tag={story.tag}
-                color={story.color}
-                icon={story.icon}
-                hasNew={story.hasNew}
-                onPress={() => handleStoryPress(story.tag)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* VERSES LIST */}
-        <View className="flex-1 px-5">
-          {loading && (
-            <View className="items-center py-4">
-              <ActivityIndicator color="#F9C846" />
-              <Text className="text-gray-700 mt-2 font-lexend-light">
-                Loading verses...
-              </Text>
-            </View>
-          )}
-
-          {error && (
-            <View className="bg-red-50 p-4 rounded-2xl mb-4 border border-red-200">
-              <Text className="text-red-600 text-center font-lexend-light">
-                {error}
-              </Text>
-            </View>
-          )}
-
-          {!loading && verses.length === 0 && !error && (
-            <View className="py-4">
-              <Text className="text-gray-700 text-center font-lexend-light">
-                No verses found.
-              </Text>
-            </View>
-          )}
-
-          {!loading && verses.length > 0 && (
-            <ScrollView
-              contentContainerStyle={{ paddingBottom: 80 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {verses.map((verse) => (
-                <VerseCard
-                  key={verse.id}
-                  verse={verse}
-                  isLiked={likedVerses.has(verse.id)}
-                  isSaved={savedVerses.has(verse.id)}
-                  counts={getVerseCount(verse.id)}
-                  onToggleLike={toggleLike}
-                  onToggleSave={toggleSave}
-                  onShare={handleShare}
-                  // Trigger view recording when card is rendered (simple approach)
-                  // In a real app, use onViewableItemsChanged for better accuracy
-                  onView={() => toggleInteraction(verse.id, "view", new Set(), () => { })}
-                />
-              ))}
-              <PrayerWallScreen />
-              <TestimoniesScreen />
-              <TouchableOpacity onPress={() => logout()}>
-                <Text>Logout</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </View>
         {/* Celebration Modal */}
         <CelebrationModal
           visible={!!notification}
