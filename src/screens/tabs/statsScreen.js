@@ -26,14 +26,10 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withSpring,
   ZoomIn
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import CelebrationModal from "../../components/CelebrationModal";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { images } from "../../utils";
@@ -191,152 +187,7 @@ const DetailsModal = ({ visible, item, onClose, type }) => {
   );
 };
 
-// Celebration Modal Component
-const CelebrationModal = ({ visible, item, onClose, type }) => {
-  if (!item) return null;
 
-  // Animation values
-  const scale = useSharedValue(0);
-  const rotate = useSharedValue(0);
-
-  useEffect(() => {
-    if (visible) {
-      scale.value = withSequence(
-        withSpring(1.2),
-        withSpring(1)
-      );
-      rotate.value = withRepeat(
-        withSequence(
-          withSpring(0.1),
-          withSpring(-0.1)
-        ),
-        -1,
-        true
-      );
-    } else {
-      scale.value = 0;
-      rotate.value = 0;
-    }
-  }, [visible]);
-
-  const animatedImageStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: scale.value },
-        { rotate: `${rotate.value}rad` }
-      ],
-    };
-  });
-
-  const isQuest = type === "quest";
-  const gradientColors = isQuest
-    ? ["#E0E7FF", "#C7D2FE"] // Blue/Indigo for Quest
-    : ["#FEF3C7", "#FDE68A"]; // Amber/Gold for Badge
-
-  const iconColor = isQuest ? "#4F46E5" : "#D97706";
-  const textColor = isQuest ? "text-indigo-900" : "text-amber-900";
-  const accentColor = isQuest ? "text-indigo-600" : "text-amber-600";
-
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <BlurView
-        intensity={100} // High intensity to mask background colors
-        tint="extralight" // Thick material to provide a neutral white base
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 20,
-        }}
-      >
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          }}
-        />
-        <Animated.View
-          entering={ZoomIn.duration(500)}
-          className="w-full max-w-sm items-center"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 20 },
-            shadowOpacity: 0.15,
-            shadowRadius: 30,
-            elevation: 20,
-          }}
-        >
-          {/* Card Container */}
-          <View className="bg-white rounded-[40px] overflow-hidden w-full items-center pb-8">
-
-            {/* Header Background */}
-            <LinearGradient
-              colors={gradientColors}
-              style={{ width: "100%", height: 140, alignItems: "center", justifyContent: "center" }}
-            >
-              {/* Animated Mascot */}
-              <Animated.View style={[{ marginTop: 40 }, animatedImageStyle]}>
-                <Image
-                  source={images.Char}
-                  style={{ width: 140, height: 140 }}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-            </LinearGradient>
-
-            <View className="px-8 pt-12 items-center w-full">
-              <Text className={`text-[28px] font-lexend-bold ${textColor} text-center mb-2`}>
-                {isQuest ? "Quest Complete!" : "Badge Unlocked!"}
-              </Text>
-
-              <Text className="text-[16px] font-lexend text-gray-600 text-center mb-6 leading-[24px]">
-                You've successfully {isQuest ? "completed" : "earned"}{"\n"}
-                <Text className={`font-lexend-bold ${accentColor} text-[18px]`}>
-                  {item.title || item.name}
-                </Text>
-              </Text>
-
-              {/* Reward Badge */}
-              <View className={`px-6 py-3 rounded-2xl mb-8 flex-row items-center gap-3 ${isQuest ? "bg-indigo-50" : "bg-amber-50"}`}>
-                <View className={`p-2 rounded-full ${isQuest ? "bg-indigo-100" : "bg-amber-100"}`}>
-                  <Zap size={24} color={iconColor} fill={iconColor} />
-                </View>
-                <View>
-                  <Text className="text-[12px] font-lexend-medium text-gray-500 uppercase tracking-wider">
-                    Reward
-                  </Text>
-                  <Text className={`text-[20px] font-lexend-bold ${textColor}`}>
-                    +{item.xp_reward} XP
-                  </Text>
-                </View>
-              </View>
-
-              <Pressable
-                onPress={onClose}
-                className="w-full active:scale-95"
-              >
-                <LinearGradient
-                  colors={isQuest ? ["#4F46E5", "#4338CA"] : ["#F59E0B", "#D97706"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{ borderRadius: 20, paddingVertical: 16, width: "100%" }}
-                >
-                  <Text className="text-white text-center font-lexend-bold text-[16px]">
-                    Awesome!
-                  </Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </View>
-        </Animated.View>
-      </BlurView>
-    </Modal>
-  );
-};
 
 export default function StatsScreen() {
   const { user } = useAuth();

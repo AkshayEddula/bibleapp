@@ -1,6 +1,7 @@
 // HomeScreen.js - Updated with Stories Header
+import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bell, Calendar, Flame } from "lucide-react-native";
+import { Bell, Calendar } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,11 +10,13 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import CelebrationModal from "../../components/CelebrationModal";
 import PrayerWallScreen from "../../components/PrayerCard";
 import { StoryCircle } from "../../components/StoriesCard";
+import StreakModal from "../../components/StreakModal";
 import TestimoniesScreen from "../../components/TestimonalCard";
 import { VerseCard } from "../../components/VerseCard";
 import { useAuth } from "../../context/AuthContext";
@@ -64,9 +67,13 @@ const storyTags = [
     icon: "🙏",
     hasNew: true,
   },
+
 ];
 
+// Achievement Toast Component - REMOVED
+
 export default function HomeScreen() {
+  const navigation = useNavigation();
   const { isUserLoggedIn, user, logout, isLogoutLoading } = useAuth();
   const [verses, setVerses] = useState([]);
   const [likedVerses, setLikedVerses] = useState(new Set());
@@ -74,6 +81,18 @@ export default function HomeScreen() {
   const [verseCounts, setVerseCounts] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Notification State
+  const [notification, setNotification] = useState(null);
+  const notifiedIdsRef = useRef(new Set());
+
+  // Streak Modal State
+  const [streakModalVisible, setStreakModalVisible] = useState(false);
+  const [streakData, setStreakData] = useState({
+    current: 0,
+    history: [],
+    quests: []
+  });
 
   const fetchedOnce = useRef(false);
 
@@ -83,7 +102,55 @@ export default function HomeScreen() {
     fetchedOnce.current = true;
 
     initializeData();
+
+    // Start polling for achievements
+    const interval = setInterval(checkAchievements, 10000); // Check every 10s
+    return () => clearInterval(interval);
   }, [isUserLoggedIn]);
+
+  const checkAchievements = async () => {
+    if (!user) return;
+
+    const now = new Date();
+    const oneMinuteAgo = new Date(now.getTime() - 60000); // Check last minute
+
+    // Check Quests
+    const { data: quests } = await supabase
+      .from("user_quests")
+      .select("*, quests(*)")
+      .eq("user_id", user.id)
+      .eq("is_completed", true)
+      .gt("completed_at", oneMinuteAgo.toISOString());
+
+    if (quests && quests.length > 0) {
+      const latest = quests[0];
+      if (!notifiedIdsRef.current.has(`quest-${latest.id}`)) {
+        setNotification({ type: 'quest', item: { ...latest.quests, ...latest } });
+        notifiedIdsRef.current.add(`quest-${latest.id}`);
+        return; // Show one at a time
+      }
+    }
+
+    // Check Badges
+    const { data: badges } = await supabase
+      .from("user_badges")
+      .select("*, badges(*)")
+      .eq("user_id", user.id)
+      .gt("earned_at", oneMinuteAgo.toISOString());
+
+    if (badges && badges.length > 0) {
+      const latest = badges[0];
+      if (!notifiedIdsRef.current.has(`badge-${latest.id}`)) {
+        setNotification({ type: 'badge', item: { ...latest.badges, ...latest } });
+        notifiedIdsRef.current.add(`badge-${latest.id}`);
+      }
+    }
+  };
+
+  const handleNotificationPress = () => {
+    setNotification(null);
+    navigation.navigate('Stats'); // Navigate to Stats tab
+  };
 
   const initializeData = async () => {
     setLoading(true);
@@ -129,11 +196,96 @@ export default function HomeScreen() {
         });
         setVerseCounts(countsMap);
       }
+
+      // Fetch Streak Data
+      await fetchStreakData();
+
     } catch (err) {
       setError(err.message);
       console.error("Error initializing data:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStreakData = async () => {
+    try {
+      // 1. Get Current Streak
+      const { data: stats } = await supabase
+        .from("gamification_profiles")
+        .select("current_streak")
+        .eq("user_id", user.id)
+        .single();
+
+      // 2. Get Weekly History (Last 7 days)
+      const today = new Date();
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        last7Days.push(d.toISOString().split('T')[0]);
+      }
+
+      // Fetch daily stats for these days
+      const { data: dailyStats } = await supabase
+        .from("daily_user_stats")
+        .select("date")
+        .eq("user_id", user.id)
+        .in("date", last7Days);
+
+      const activeDates = new Set(dailyStats?.map(ds => ds.date) || []);
+
+      const history = last7Days.map(dateStr => {
+        const date = new Date(dateStr);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'narrow' }); // M, T, W...
+        return {
+          day: dayName,
+          active: activeDates.has(dateStr)
+        };
+      });
+
+      // 3. Get Active Streak Quests (from metadata)
+      const { data: allStreakQuests } = await supabase
+        .from("quests")
+        .select("*")
+        .ilike("requirement_type", "%streak%")
+        .eq("is_active", true);
+
+      // 4. Get User Progress for these quests (to check completion)
+      const { data: userQuestProgress } = await supabase
+        .from("user_quests")
+        .select("quest_id, is_completed")
+        .eq("user_id", user.id)
+        .in("quest_id", allStreakQuests?.map(q => q.id) || []);
+
+      const completedQuestIds = new Set(
+        userQuestProgress?.filter(uq => uq.is_completed).map(uq => uq.quest_id)
+      );
+
+      const formattedQuests = allStreakQuests?.map(q => {
+        const isCompleted = completedQuestIds.has(q.id);
+        // If not completed, show current streak as progress
+        // If completed, it's done.
+        return {
+          title: q.title,
+          reward: q.xp_reward,
+          completed: isCompleted,
+          progress: isCompleted ? q.requirement_count : (stats?.current_streak || 0),
+          total: q.requirement_count
+        };
+      }) || [];
+
+      // Sort: Incomplete first
+      formattedQuests.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+
+      setStreakData({
+        current: stats?.current_streak || 0,
+        history,
+        quests: formattedQuests
+      });
+
+    } catch (error) {
+      console.error("Error fetching streak data:", error);
     }
   };
 
@@ -272,8 +424,15 @@ export default function HomeScreen() {
               <Pressable className="active:opacity-60">
                 <Calendar size={24} color="#1f2937" strokeWidth={2} />
               </Pressable>
-              <Pressable className="active:opacity-60">
-                <Flame size={24} color="#1f2937" strokeWidth={2} />
+              <Pressable
+                className="active:opacity-60"
+                onPress={() => {
+                  fetchStreakData(); // Refresh data before showing
+                  setStreakModalVisible(true);
+                }}
+              >
+                <Text>Streak</Text>
+                {/* <Flame size={24} color={streakData.current > 0 ? "#EA580C" : "#1f2937"} fill={streakData.current > 0 ? "#EA580C" : "none"} strokeWidth={2} /> */}
               </Pressable>
               <Pressable className="active:opacity-60 relative">
                 <Bell size={24} color="#1f2937" strokeWidth={2} />
@@ -361,7 +520,24 @@ export default function HomeScreen() {
             </ScrollView>
           )}
         </View>
+        {/* Celebration Modal */}
+        <CelebrationModal
+          visible={!!notification}
+          item={notification?.item}
+          type={notification?.type}
+          onClose={handleNotificationPress}
+        />
+
+        {/* Streak Modal */}
+        <StreakModal
+          visible={streakModalVisible}
+          onClose={() => setStreakModalVisible(false)}
+          streak={streakData.current}
+          history={streakData.history}
+          quests={streakData.quests}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
