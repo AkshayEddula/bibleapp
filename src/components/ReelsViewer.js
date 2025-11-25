@@ -31,6 +31,7 @@ export default function ReelsViewer({
     likedVerses = new Set(),
     savedVerses = new Set(),
     onInteraction,
+    loading = false, // New prop
 }) {
     const insets = useSafeAreaInsets();
     const flatListRef = useRef(null);
@@ -44,6 +45,54 @@ export default function ReelsViewer({
     const [loadingComments, setLoadingComments] = useState(false);
     const [sendingComment, setSendingComment] = useState(false);
     const [activeVerseId, setActiveVerseId] = useState(null);
+
+    // Loading state management - completely self-contained
+    const [isInternalLoading, setIsInternalLoading] = useState(false);
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+    const [prevVersesLength, setPrevVersesLength] = useState(verses.length);
+
+    // When modal opens, start loading
+    useEffect(() => {
+        if (visible) {
+            // Modal just opened
+            if (verses.length === 0) {
+                // Empty verses means we're loading
+                setIsInternalLoading(true);
+                setHasLoadedOnce(false);
+            } else {
+                // We have verses, not loading
+                setIsInternalLoading(false);
+                setHasLoadedOnce(true);
+            }
+        } else {
+            // Modal closed, reset
+            setIsInternalLoading(false);
+            setHasLoadedOnce(false);
+        }
+    }, [visible]);
+
+    // Detect when verses are cleared (going from >0 to 0) while modal is open
+    useEffect(() => {
+        if (visible) {
+            if (prevVersesLength > 0 && verses.length === 0) {
+                // Verses were cleared - we're loading new content
+                setIsInternalLoading(true);
+                setHasLoadedOnce(false);
+            } else if (verses.length > 0) {
+                // Data arrived, stop loading
+                setIsInternalLoading(false);
+                setHasLoadedOnce(true);
+            }
+            setPrevVersesLength(verses.length);
+        }
+    }, [visible, verses.length, prevVersesLength]);
+
+    // Sync with loading prop if provided
+    useEffect(() => {
+        if (visible && loading !== undefined) {
+            setIsInternalLoading(loading);
+        }
+    }, [visible, loading]);
 
     // Scroll to initial index when opening
     useEffect(() => {
@@ -315,6 +364,19 @@ export default function ReelsViewer({
 
     if (!visible) return null;
 
+    // Determine effective loading state
+    const isLoading = loading || isInternalLoading;
+    const isEmpty = !isLoading && verses.length === 0;
+
+    // Debug logging
+    console.log('ReelsViewer render:', {
+        loading,
+        isInternalLoading,
+        isLoading,
+        isEmpty,
+        versesLength: verses.length
+    });
+
     return (
         <Modal
             visible={visible}
@@ -325,22 +387,65 @@ export default function ReelsViewer({
             <View className="flex-1 bg-black">
                 <StatusBar barStyle="light-content" />
 
-                <FlatList
-                    ref={flatListRef}
-                    data={verses}
-                    renderItem={renderItem}
-                    keyExtractor={(item, index) => `${item.id}-${index}`}
-                    pagingEnabled
-                    vertical
-                    showsVerticalScrollIndicator={false}
-                    onViewableItemsChanged={onViewableItemsChanged}
-                    viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-                    getItemLayout={(data, index) => ({
-                        length: height,
-                        offset: height * index,
-                        index,
-                    })}
-                />
+                {/* Content Logic */}
+                {isLoading ? (
+                    // Loading State
+                    <View className="flex-1 items-center justify-center bg-black">
+                        <Image
+                            source={images.J1}
+                            className="absolute w-full h-full"
+                            resizeMode="cover"
+                            blurRadius={20}
+                        />
+                        <View className="absolute inset-0 bg-black/70" />
+
+                        <View className="items-center z-10">
+                            <ActivityIndicator size="large" color="#F9C846" />
+                            <Text className="text-white font-lexend-medium text-lg mt-4">
+                                Loading verses...
+                            </Text>
+                        </View>
+                    </View>
+                ) : isEmpty ? (
+                    // Empty State
+                    <View className="flex-1 items-center justify-center bg-black">
+                        <Image
+                            source={images.J1}
+                            className="absolute w-full h-full"
+                            resizeMode="cover"
+                            blurRadius={20}
+                        />
+                        <View className="absolute inset-0 bg-black/80" />
+
+                        <View className="items-center z-10 px-10">
+                            <Text className="text-4xl mb-4">🔍</Text>
+                            <Text className="text-white font-lexend-bold text-xl text-center mb-2">
+                                No Verses Found
+                            </Text>
+                            <Text className="text-white/60 font-lexend-light text-center leading-5">
+                                We couldn't find any verses for this selection. Try exploring other books or chapters.
+                            </Text>
+                        </View>
+                    </View>
+                ) : (
+                    // Content State
+                    <FlatList
+                        ref={flatListRef}
+                        data={verses}
+                        renderItem={renderItem}
+                        keyExtractor={(item, index) => `${item.id}-${index}`}
+                        pagingEnabled
+                        vertical
+                        showsVerticalScrollIndicator={false}
+                        onViewableItemsChanged={onViewableItemsChanged}
+                        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+                        getItemLayout={(data, index) => ({
+                            length: height,
+                            offset: height * index,
+                            index,
+                        })}
+                    />
+                )}
 
                 {/* Back Button - Moved after FlatList to ensure z-index priority */}
                 <Pressable
@@ -429,7 +534,7 @@ export default function ReelsViewer({
                                         {sendingComment ? (
                                             <ActivityIndicator size="small" color="white" />
                                         ) : (
-                                            <Send size={18} color="white" />
+                                            <Send size={18} color="white" pointerEvents="none" />
                                         )}
                                     </Pressable>
                                 </View>

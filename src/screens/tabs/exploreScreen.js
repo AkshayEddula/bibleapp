@@ -57,6 +57,7 @@ export default function ExploreScreen() {
   const [reelsVisible, setReelsVisible] = useState(false);
   const [reelsVerses, setReelsVerses] = useState([]);
   const [initialReelsIndex, setInitialReelsIndex] = useState(0);
+  const [reelsLoading, setReelsLoading] = useState(false); // New state
 
   useEffect(() => {
     fetchExploreData();
@@ -204,7 +205,7 @@ export default function ExploreScreen() {
     setReelsVerses(prev => prev.map(v => {
       if (v.id === verseId) {
         const counts = v.verse_interaction_counts || {};
-        const countKey = `${type}_count`;
+        const countKey = `${type} _count`;
         return {
           ...v,
           verse_interaction_counts: {
@@ -232,7 +233,7 @@ export default function ExploreScreen() {
         });
       }
     } catch (error) {
-      console.error(`Error toggling ${type}:`, error);
+      console.error(`Error toggling ${type}: `, error);
       // Revert
       setState(currentState);
     }
@@ -270,7 +271,7 @@ export default function ExploreScreen() {
       const shuffled = randomVerses.sort(() => 0.5 - Math.random());
 
       for (const v of shuffled) {
-        const key = `${v.book}-${v.chapter}`;
+        const key = `${v.book} -${v.chapter} `;
         if (!seen.has(key)) {
           seen.add(key);
           uniqueChapters.push({
@@ -297,6 +298,11 @@ export default function ExploreScreen() {
 
   const handleChapterPress = async (chapter) => {
     try {
+      // IMPORTANT: Set loading FIRST, then clear verses, THEN open modal
+      setReelsLoading(true);
+      setReelsVerses([]);
+      setReelsVisible(true);
+
       // Fetch verses
       const { data: versesData, error: versesError } = await supabase
         .from("bible_verses")
@@ -325,51 +331,95 @@ export default function ExploreScreen() {
         verse_interaction_counts: countsMap[v.id] || {}
       }));
 
-      handleOpenReels(versesWithCounts, 0);
+      // Update with actual data
+      setReelsVerses(versesWithCounts);
+      setInitialReelsIndex(0);
     } catch (error) {
       console.error("Error fetching chapter verses:", error);
+      // Keep visible but stop loading (will show empty state if verses is empty)
+    } finally {
+      setReelsLoading(false); // Stop loading
     }
   };
 
-  const handleBookPress = async (book) => {
+  const handleBookPress = (book) => {
+    // Set loading state SYNCHRONOUSLY before any async operations
+    setReelsLoading(true);
+    setReelsVerses([]);
+    setReelsVisible(true);
+
+    // Then start the async fetch
+    fetchBookVerses(book);
+  };
+
+  const fetchBookVerses = async (book) => {
     try {
+      console.log("Fetching verses for book:", book);
+
+      // Artificial delay to ensure loading state is visible (and to prevent flickering)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Fetch all verses from the book
-      const { data: versesData, error: versesError } = await supabase
+      // Use ilike for case-insensitive matching just in case
+      let { data: versesData, error: versesError } = await supabase
         .from("bible_verses")
         .select("*")
         .eq("book", book)
         .order("chapter", { ascending: true })
         .order("verse", { ascending: true })
-        .limit(500); // Limit to avoid loading too many verses
+        .limit(500);
+
+      // If exact match fails, try case-insensitive
+      if (!versesData || versesData.length === 0) {
+        console.log("No exact match, trying ilike for:", book);
+        const { data: retryData, error: retryError } = await supabase
+          .from("bible_verses")
+          .select("*")
+          .ilike("book", book)
+          .order("chapter", { ascending: true })
+          .order("verse", { ascending: true })
+          .limit(500);
+
+        if (!retryError && retryData) {
+          versesData = retryData;
+          versesError = null;
+        }
+      }
 
       if (versesError) throw versesError;
 
+      console.log(`Found ${versesData?.length || 0} verses for book: ${book}`);
+
       if (!versesData || versesData.length === 0) {
-        console.log("No verses found for book:", book);
-        return;
+        // Don't set verses, let finally block set loading to false
+        // This will trigger the empty state in ReelsViewer
+        // Don't return - let finally execute
+      } else {
+        // Only fetch interaction counts if we have verses
+        const verseIds = versesData.map(v => v.id);
+        const { data: countsData } = await supabase
+          .from("verse_interaction_counts")
+          .select("*")
+          .in("verse_id", verseIds);
+
+        // Merge counts with verses
+        const countsMap = (countsData || []).reduce((acc, curr) => {
+          acc[curr.verse_id] = curr;
+          return acc;
+        }, {});
+
+        const versesWithCounts = versesData.map(v => ({
+          ...v,
+          verse_interaction_counts: countsMap[v.id] || {}
+        }));
+
+        setReelsVerses(versesWithCounts);
+        setInitialReelsIndex(0);
       }
-
-      // Fetch interaction counts for these verses
-      const verseIds = versesData.map(v => v.id);
-      const { data: countsData } = await supabase
-        .from("verse_interaction_counts")
-        .select("*")
-        .in("verse_id", verseIds);
-
-      // Merge counts with verses
-      const countsMap = (countsData || []).reduce((acc, curr) => {
-        acc[curr.verse_id] = curr;
-        return acc;
-      }, {});
-
-      const versesWithCounts = versesData.map(v => ({
-        ...v,
-        verse_interaction_counts: countsMap[v.id] || {}
-      }));
-
-      handleOpenReels(versesWithCounts, 0);
     } catch (error) {
       console.error("Error fetching book verses:", error);
+    } finally {
+      setReelsLoading(false); // Always stop loading, whether we found verses or not
     }
   };
 
@@ -627,7 +677,7 @@ export default function ExploreScreen() {
                   <View className="flex-row flex-wrap justify-between">
                     {randomChapters.map((chapter) => (
                       <Pressable
-                        key={`${chapter.book}-${chapter.chapter}`}
+                        key={`${chapter.book} -${chapter.chapter} `}
                         onPress={() => handleChapterPress(chapter)}
                         style={{
                           width: COLUMN_WIDTH,
@@ -737,6 +787,7 @@ export default function ExploreScreen() {
         initialIndex={initialReelsIndex}
         likedVerses={likedVerses}
         savedVerses={savedVerses}
+        loading={reelsLoading}
         onInteraction={toggleInteraction}
       />
     </LinearGradient>
