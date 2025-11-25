@@ -557,7 +557,7 @@ export default function HomeScreen() {
                 setStreakModalVisible(true);
               }}
             >
-              <Flame size={24} color={streakData.current > 0 ? "#EA580C" : "#1f2937"} fill={streakData.current > 0 ? "#EA580C" : "none"} strokeWidth={2} />
+              <Flame size={24} color={streakData.current > 0 ? "#EA580C" : "#1f2937"} fill={streakData.current > 0 ? "#EA580C" : "none"} strokeWidth={2} pointerEvents="none" />
             </Pressable>
             <Pressable className="active:opacity-60 relative">
               <Bell size={24} color="#1f2937" strokeWidth={2} />
@@ -637,8 +637,8 @@ export default function HomeScreen() {
                   }
                 }}
                 className={`px-4 py-2 rounded-full border ${activeFilter === filter
-                    ? "bg-gray-900 border-gray-900"
-                    : "bg-white border-gray-200"
+                  ? "bg-gray-900 border-gray-900"
+                  : "bg-white border-gray-200"
                   }`}
               >
                 <Text

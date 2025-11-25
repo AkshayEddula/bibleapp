@@ -1,27 +1,26 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import HomeScreen from "../screens/tabs/homeScreen";
-import ExploreScreen from "../screens/tabs/exploreScreen";
-import ProfileScreen from "../screens/tabs/profileScreen";
-import StatsScreen from "../screens/tabs/statsScreen";
 import {
   BookOpen,
   ChartSpline,
   LibraryBig,
   UserRound,
 } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
-  View,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Dimensions,
+  View
 } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { useEffect, useState } from "react";
+import ExploreScreen from "../screens/tabs/exploreScreen";
+import HomeScreen from "../screens/tabs/homeScreen";
+import ProfileScreen from "../screens/tabs/profileScreen";
+import StatsScreen from "../screens/tabs/statsScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -143,6 +142,8 @@ function TabButton({ isFocused, onPress, IconComponent, label }) {
             color={isFocused ? "#133bb7" : "#8E8E93"}
             strokeWidth={1.5}
             size={20}
+            pointerEvents="none"
+
           />
         </Animated.View>
         {isFocused && (

@@ -270,6 +270,7 @@ export const VerseCard = ({
                 color={isLiked ? "#ef4444" : "#57534e"}
                 fill={isLiked ? "#ef4444" : "transparent"}
                 strokeWidth={2}
+                pointerEvents="none"
               />
               <Text
                 className={`text-[14px] font-lexend-medium ${isLiked ? "text-red-500" : "text-gray-700"}`}
@@ -283,7 +284,7 @@ export const VerseCard = ({
               onPress={() => setShowComments(true)}
               className="flex-row items-center gap-2 active:scale-95 px-3 py-2 rounded-full"
             >
-              <MessageCircle size={21} color="#57534e" strokeWidth={2} />
+              <MessageCircle size={21} color="#57534e" strokeWidth={2} pointerEvents="none" />
               <Text className="text-[14px] font-lexend-medium text-gray-700">
                 {counts.comment_count || 0}
               </Text>
@@ -294,7 +295,7 @@ export const VerseCard = ({
               onPress={handleShare}
               className="flex-row items-center gap-2 active:scale-95 px-3 py-2 rounded-full"
             >
-              <Share2 size={20} color="#57534e" strokeWidth={2} />
+              <Share2 size={20} color="#57534e" strokeWidth={2} pointerEvents="none" />
               <Text className="text-[14px] font-lexend-medium text-gray-700">
                 {counts.share_count || 0}
               </Text>
@@ -313,12 +314,13 @@ export const VerseCard = ({
                 color={localSaved ? "#F59E0B" : "#57534e"}
                 fill={localSaved ? "#F59E0B" : "transparent"}
                 strokeWidth={2}
+                pointerEvents="none"
               />
             </Pressable>
 
             {/* View Count (Read Only) */}
             <View className="flex-row items-center gap-2 px-3 py-2">
-              <Eye size={20} color="#9ca3af" strokeWidth={2} />
+              <Eye size={20} color="#9ca3af" strokeWidth={2} pointerEvents="none" />
               <Text className="text-[13px] font-lexend-medium text-gray-400">
                 {counts.view_count || 0}
               </Text>

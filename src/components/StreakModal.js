@@ -69,7 +69,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                             onPress={onClose}
                             className="absolute top-4 right-4 bg-white/20 p-2 rounded-full z-10"
                         >
-                            <X size={20} color="#fff" />
+                            <X size={20} color="#fff" pointerEvents="none" />
                         </Pressable>
 
                         <View className="flex-row items-center gap-4 mb-2 z-10">
