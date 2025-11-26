@@ -24,7 +24,7 @@ const CARD_SIZE = (width - 48) / 3; // 3 columns for verses
 const POST_CARD_SIZE = (width - 48) / 2 - 6; // 2 columns for posts
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("posts"); // posts, liked, saved
@@ -754,7 +754,7 @@ export default function ProfileScreen() {
                   className="bg-red-50 rounded-2xl p-4 active:bg-red-100"
                   onPress={() => {
                     setSettingsVisible(false);
-                    setTimeout(() => signOut(), 300);
+                    setTimeout(() => logout(), 300);
                   }}
                 >
                   <View className="flex-row items-center justify-between">

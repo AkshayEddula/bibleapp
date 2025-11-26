@@ -1,19 +1,19 @@
 // PrayerWallScreen.js
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Text,
-  View,
-  Pressable,
-  TextInput,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
-import { Heart, MessageCircle, Plus, X, Send } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../lib/supabase";
-import { useAuth } from "../context/AuthContext";
+import { Heart, MessageCircle, Plus, Send, X } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const categories = [
   { value: "Health", emoji: "❤️", colors: ["#f87171", "#fb923c"] },
@@ -135,12 +135,12 @@ export default function PrayerWallScreen() {
       prayers.map((p) =>
         p.id === prayerId
           ? {
-              ...p,
-              isPraying: !isCurrentlyPraying,
-              prayingCount: isCurrentlyPraying
-                ? p.prayingCount - 1
-                : p.prayingCount + 1,
-            }
+            ...p,
+            isPraying: !isCurrentlyPraying,
+            prayingCount: isCurrentlyPraying
+              ? p.prayingCount - 1
+              : p.prayingCount + 1,
+          }
           : p,
       ),
     );
@@ -166,12 +166,12 @@ export default function PrayerWallScreen() {
         prayers.map((p) =>
           p.id === prayerId
             ? {
-                ...p,
-                isPraying: isCurrentlyPraying,
-                prayingCount: isCurrentlyPraying
-                  ? p.prayingCount + 1
-                  : p.prayingCount - 1,
-              }
+              ...p,
+              isPraying: isCurrentlyPraying,
+              prayingCount: isCurrentlyPraying
+                ? p.prayingCount + 1
+                : p.prayingCount - 1,
+            }
             : p,
         ),
       );
@@ -336,6 +336,7 @@ export default function PrayerWallScreen() {
         style={{
           borderRadius: 24,
           padding: 20,
+
           marginBottom: 16,
           borderWidth: 2,
           borderColor: "#fde68a",
@@ -364,7 +365,7 @@ export default function PrayerWallScreen() {
                 justifyContent: "center",
               }}
             >
-              <Plus size={24} color="white" strokeWidth={2.5} />
+              <Plus size={24} color="white" strokeWidth={2.5} pointerEvents="none" />
             </LinearGradient>
           </View>
         </View>
@@ -416,7 +417,7 @@ export default function PrayerWallScreen() {
                 gap: 8,
               }}
             >
-              <Plus size={20} color="white" strokeWidth={2.5} />
+              <Plus size={20} color="white" strokeWidth={2.5} pointerEvents="none" />
               <Text className="text-white font-lexend-medium text-sm">
                 Add Prayer
               </Text>
@@ -523,22 +524,21 @@ export default function PrayerWallScreen() {
                             color={prayer.isPraying ? "#a855f7" : "#78716c"}
                             fill={prayer.isPraying ? "#a855f7" : "transparent"}
                             strokeWidth={2}
+                            pointerEvents="none"
                           />
                           <Text
-                            className={`text-sm font-lexend-medium ${
-                              prayer.isPraying
-                                ? "text-purple-600"
-                                : "text-gray-700"
-                            }`}
+                            className={`text-sm font-lexend-medium ${prayer.isPraying
+                              ? "text-purple-600"
+                              : "text-gray-700"
+                              }`}
                           >
                             {prayer.isPraying ? "Praying" : "Pray"}
                           </Text>
                           <Text
-                            className={`text-sm font-lexend-semibold ${
-                              prayer.isPraying
-                                ? "text-purple-600"
-                                : "text-gray-500"
-                            }`}
+                            className={`text-sm font-lexend-semibold ${prayer.isPraying
+                              ? "text-purple-600"
+                              : "text-gray-500"
+                              }`}
                           >
                             {prayer.prayingCount}
                           </Text>
@@ -553,6 +553,7 @@ export default function PrayerWallScreen() {
                             size={20}
                             color="#78716c"
                             strokeWidth={2}
+                            pointerEvents="none"
                           />
                           <Text className="text-sm font-lexend-medium text-gray-700">
                             {prayer.commentCount}
@@ -596,7 +597,7 @@ export default function PrayerWallScreen() {
                   onPress={() => setShowAddModal(false)}
                   className="w-8 h-8 items-center justify-center active:opacity-60"
                 >
-                  <X size={20} color="#57534e" />
+                  <X size={20} color="#57534e" pointerEvents="none" />
                 </Pressable>
               </View>
             </View>
@@ -713,8 +714,8 @@ export default function PrayerWallScreen() {
                 style={{
                   opacity:
                     !newPrayer.title.trim() ||
-                    !newPrayer.description.trim() ||
-                    submittingPrayer
+                      !newPrayer.description.trim() ||
+                      submittingPrayer
                       ? 0.5
                       : 1,
                 }}
@@ -772,7 +773,7 @@ export default function PrayerWallScreen() {
                   onPress={() => setShowCommentsModal(false)}
                   className="w-8 h-8 items-center justify-center active:opacity-60"
                 >
-                  <X size={20} color="#57534e" />
+                  <X size={20} color="#57534e" pointerEvents="none" />
                 </Pressable>
               </View>
               <Text className="text-sm font-lexend-light text-gray-600">
@@ -879,7 +880,7 @@ export default function PrayerWallScreen() {
                     {sendingComment ? (
                       <ActivityIndicator size="small" color="#212121" />
                     ) : (
-                      <Send size={18} strokeWidth={2} color="#212121" />
+                      <Send size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
                     )}
                   </LinearGradient>
                 </Pressable>

@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Send,
   Share2,
+  X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -357,7 +358,7 @@ export const VerseCard = ({
                   onPress={() => setShowComments(false)}
                   className="w-8 h-8 items-center justify-center active:opacity-60"
                 >
-                  <Text className="text-2xl text-gray-600">×</Text>
+                  <X size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
                 </Pressable>
               </View>
               <Text className="text-sm font-lexend-light text-gray-600 mt-1">
@@ -461,7 +462,7 @@ export const VerseCard = ({
                     {sendingComment ? (
                       <ActivityIndicator size="small" color="#212121" />
                     ) : (
-                      <Send size={18} strokeWidth={2} color="#212121" />
+                      <Send size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
                     )}
                   </LinearGradient>
                 </Pressable>

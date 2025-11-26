@@ -1,25 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 import {
-  Text,
-  View,
-  Pressable,
-  TextInput,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
-import {
-  Sparkles,
-  MessageCircle,
-  Share2,
-  X,
   Check,
   ChevronDown,
+  MessageCircle,
+  Sparkles,
+  X
 } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../lib/supabase";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const categories = [
   { value: "Health", emoji: "❤️", colors: ["#f87171", "#fb923c"] },
@@ -452,7 +450,7 @@ export default function TestimoniesScreen() {
                 gap: 6,
               }}
             >
-              <Sparkles size={16} color="white" strokeWidth={2.5} />
+              <Sparkles size={16} color="white" strokeWidth={2.5} pointerEvents="none" />
               <Text className="text-white font-lexend-medium text-xs">
                 Share
               </Text>
@@ -511,7 +509,7 @@ export default function TestimoniesScreen() {
                       justifyContent: "center",
                     }}
                   >
-                    <Sparkles size={24} color="white" strokeWidth={2.5} />
+                    <Sparkles size={24} color="white" strokeWidth={2.5} pointerEvents="none" />
                   </LinearGradient>
                 </View>
               </View>
@@ -712,9 +710,8 @@ export default function TestimoniesScreen() {
                     <View className="flex-row items-center justify-between">
                       <Text className="text-xs font-lexend-medium text-gray-500">
                         {totalReactions > 0
-                          ? `${totalReactions} ${
-                              totalReactions === 1 ? "reaction" : "reactions"
-                            }`
+                          ? `${totalReactions} ${totalReactions === 1 ? "reaction" : "reactions"
+                          }`
                           : "Be the first to react"}
                       </Text>
 
@@ -735,6 +732,7 @@ export default function TestimoniesScreen() {
                           size={18}
                           color="#78716c"
                           strokeWidth={2}
+                          pointerEvents="none"
                         />
                         <Text className="text-sm font-lexend-medium text-gray-700">
                           {testimony.commentCount}
@@ -784,7 +782,7 @@ export default function TestimoniesScreen() {
                   onPress={() => setShowAddModal(false)}
                   activeOpacity={0.6}
                 >
-                  <X size={24} color="#57534e" strokeWidth={2.5} />
+                  <X size={24} color="#57534e" strokeWidth={2.5} pointerEvents="none" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -818,11 +816,10 @@ export default function TestimoniesScreen() {
                     }}
                   >
                     <Text
-                      className={`font-lexend text-sm flex-1 ${
-                        selectedPrayerTitle
-                          ? "text-gray-800 font-lexend-medium"
-                          : "text-gray-400"
-                      }`}
+                      className={`font-lexend text-sm flex-1 ${selectedPrayerTitle
+                        ? "text-gray-800 font-lexend-medium"
+                        : "text-gray-400"
+                        }`}
                       numberOfLines={1}
                     >
                       {selectedPrayerTitle || "Select a prayer request"}
@@ -835,6 +832,7 @@ export default function TestimoniesScreen() {
                           { rotate: showPrayerDropdown ? "180deg" : "0deg" },
                         ],
                       }}
+                      pointerEvents="none"
                     />
                   </TouchableOpacity>
 
@@ -1149,8 +1147,8 @@ export default function TestimoniesScreen() {
                   flex: 1,
                   opacity:
                     !newTestimony.title.trim() ||
-                    !newTestimony.content.trim() ||
-                    submittingTestimony
+                      !newTestimony.content.trim() ||
+                      submittingTestimony
                       ? 0.5
                       : 1,
                 }}
@@ -1210,7 +1208,7 @@ export default function TestimoniesScreen() {
                   Comments
                 </Text>
                 <TouchableOpacity onPress={() => setShowCommentsModal(false)}>
-                  <X size={24} color="#57534e" strokeWidth={2.5} />
+                  <X size={24} color="#57534e" strokeWidth={2.5} pointerEvents="none" />
                 </TouchableOpacity>
               </View>
               <Text className="text-sm font-lexend-light text-gray-600">
@@ -1317,7 +1315,7 @@ export default function TestimoniesScreen() {
                     {sendingComment ? (
                       <ActivityIndicator size="small" color="white" />
                     ) : (
-                      <MessageCircle size={20} color="white" />
+                      <MessageCircle size={20} color="white" pointerEvents="none" />
                     )}
                   </LinearGradient>
                 </TouchableOpacity>

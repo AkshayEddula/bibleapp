@@ -10,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TouchableOpacity,
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -686,12 +685,9 @@ export default function HomeScreen() {
   const renderFooter = () => {
     if (activeTab === 'foryou') {
       return (
-        <View className="px-5 pb-20">
+        <View className="px-5 pt-0 pb-20">
           <PrayerWallScreen />
           <TestimoniesScreen />
-          <TouchableOpacity onPress={() => logout()}>
-            <Text className="text-center text-gray-400 py-4">Logout</Text>
-          </TouchableOpacity>
         </View>
       );
     } else {
