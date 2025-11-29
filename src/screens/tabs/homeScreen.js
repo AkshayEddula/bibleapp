@@ -118,9 +118,14 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [isUserLoggedIn]);
 
-  // Effect to refetch when filter changes
+  // Track if verses have been loaded for the verses tab
+  const [versesTabLoaded, setVersesTabLoaded] = useState(false);
+
+  // Effect to fetch verses when filter changes (only if verses tab is already loaded)
   useEffect(() => {
-    if (fetchedOnce.current) {
+    if (fetchedOnce.current && versesTabLoaded && activeTab === 'verses') {
+      setPage(0);
+      setHasMore(true);
       fetchVerses(0, activeFilter);
     }
   }, [activeFilter]);
@@ -209,8 +214,16 @@ export default function HomeScreen() {
       setLoading(true);
       setError(null);
 
-      // Fetch initial verses
-      await fetchVerses(0, activeFilter);
+      // Fetch only "For You" verse (first verse) initially
+      const { data: forYouVerse, error: forYouError } = await supabase
+        .from("bible_verses")
+        .select("*")
+        .limit(1);
+
+      if (forYouError) throw forYouError;
+      if (forYouVerse) {
+        setVerses(forYouVerse);
+      }
 
       const [likesResult, savesResult, countsResult, viewsResult] =
         await Promise.all([
@@ -604,7 +617,16 @@ export default function HomeScreen() {
           )}
         </Pressable>
         <Pressable
-          onPress={() => setActiveTab("verses")}
+          onPress={() => {
+            setActiveTab("verses");
+            // Lazy load verses when tab is clicked for the first time
+            if (!versesTabLoaded) {
+              setVersesTabLoaded(true);
+              setPage(0);
+              setHasMore(true);
+              fetchVerses(0, activeFilter);
+            }
+          }}
           className="items-center"
         >
           <Text className={`text-[16px] font-lexend-semibold ${activeTab === "verses" ? "text-gray-900" : "text-gray-400"}`}>
@@ -749,8 +771,9 @@ export default function HomeScreen() {
 
   const renderItem = ({ item }) => {
     const counts = getVerseCount(item.id);
+    const marginClass = activeTab === 'foryou' ? 'px-5 mb-0' : 'px-5 mb-6';
     return (
-      <View className="px-5 mb-6">
+      <View className={marginClass}>
         <VerseCard
           key={`${item.id}-${counts.view_count}`} // Force re-render when view count changes
           verse={item}

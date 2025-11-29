@@ -1,4 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   BookOpen,
   ChartSpline,
@@ -30,8 +31,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
 
   useEffect(() => {
     activeIndex.value = withSpring(state.index, {
-      damping: 60,
-      stiffness: 120,
+      damping: 30,
+      stiffness: 150,
     });
   }, [state.index]);
 
@@ -44,7 +45,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
     if (tabBarWidth === 0) return { left: 0 };
 
     const numberOfTabs = 4;
-    const horizontalPadding = 16;
+    const horizontalPadding = 2;
     const availableWidth = tabBarWidth - horizontalPadding * 2;
     const tabWidth = availableWidth / numberOfTabs;
     const indicatorWidth = 70;
@@ -64,7 +65,14 @@ function CustomTabBar({ state, descriptors, navigation }) {
       {tabBarWidth > 0 && (
         <Animated.View
           style={[styles.slidingIndicator, animatedIndicatorStyle]}
-        />
+        >
+          <LinearGradient
+            colors={["#fbbf24", "#f59e0b"]} // Richer Gold Gradient
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ flex: 1, borderRadius: 28 }}
+          />
+        </Animated.View>
       )}
 
       {state.routes.map((route, index) => {
@@ -114,12 +122,12 @@ function TabButton({ isFocused, onPress, IconComponent, label }) {
 
   useEffect(() => {
     scale.value = withSpring(isFocused ? 1 : 0.9, {
-      damping: 15,
-      stiffness: 150,
+      damping: 20,
+      stiffness: 250,
     });
     opacity.value = withSpring(isFocused ? 1 : 0.7, {
-      damping: 15,
-      stiffness: 150,
+      damping: 20,
+      stiffness: 250,
     });
   }, [isFocused]);
 
@@ -139,15 +147,15 @@ function TabButton({ isFocused, onPress, IconComponent, label }) {
       <View className="items-center justify-center">
         <Animated.View style={animatedIconStyle}>
           <IconComponent
-            color={isFocused ? "#133bb7" : "#8E8E93"}
-            strokeWidth={1.5}
-            size={20}
+            color={isFocused ? "#ffffff" : "#9ca3af"} // White when focused
+            strokeWidth={isFocused ? 1.5 : 2}
+            size={22}
             pointerEvents="none"
 
           />
         </Animated.View>
         {isFocused && (
-          <Text className="font-lexend-medium text-[#133bb7] tracking-tight text-[10px] mt-0.5">
+          <Text className="font-lexend-medium text-white tracking-tight text-[10px] mt-0.5">
             {label}
           </Text>
         )}
@@ -175,29 +183,29 @@ export default function TabNavigator() {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
-    height: 76,
+    height: 70,
     position: "absolute",
     bottom: 14,
-    left: 20,
-    right: 20,
+    left: 40,
+    right: 40,
     borderRadius: 40,
     borderWidth: 0.5,
-    borderColor: "hsl(0, 0%, 89%)",
-    backgroundColor: "hsl(0, 0%, 96%)",
-    shadowColor: "hsl(0, 0%, 70%)",
+    borderColor: "hsl(0, 0%, 92%)", // Slightly lighter border
+    backgroundColor: "#ffffff", // Pure white background
+    shadowColor: "#000", // Standard black shadow for better visibility
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1, // Softer opacity
+    shadowRadius: 12, // Larger radius for diffusion
     elevation: 5,
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: 16,
+    paddingHorizontal: 2,
   },
   slidingIndicator: {
     position: "absolute",
-    height: 48,
+    height: 56,
     width: 70, // Fixed width for the pill
-    backgroundColor: "hsl(0, 0%, 100%)",
+    // backgroundColor: "hsl(0, 0%, 100%)", // Removed in favor of LinearGradient
     borderRadius: 18,
     shadowColor: "hsl(0, 0%, 70%)",
     shadowOffset: { width: 0, height: 6 },
