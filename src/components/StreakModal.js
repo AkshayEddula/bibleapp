@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { CheckCircle2, Flame, X } from "lucide-react-native";
+import { Calendar, CheckCircle2, Flame, Trophy, X } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, Text, View } from "react-native";
 import { images } from "../utils";
@@ -11,6 +11,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
 
     useEffect(() => {
         if (visible) {
+            slideAnim.setValue(SCREEN_HEIGHT);
             Animated.spring(slideAnim, {
                 toValue: 0,
                 useNativeDriver: true,
@@ -50,126 +51,158 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                         borderTopRightRadius: 32,
                         transform: [{ translateY: slideAnim }],
                         shadowColor: "#000",
-                        shadowOffset: { width: 0, height: -4 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 12,
-                        elevation: 20,
+                        shadowOffset: { width: 0, height: -2 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 8,
+                        elevation: 10,
                         paddingBottom: 40, // Safe area padding
                         overflow: "hidden",
                     }}
                 >
-                    {/* Header */}
+                    {/* Header with Premium Gradient */}
                     <LinearGradient
-                        colors={["#FF9A9E", "#FECFEF"]}
+                        colors={["#FF9A9E", "#FECFEF", "#FFF0F5"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={{ padding: 24, alignItems: "center", position: "relative", overflow: 'visible' }}
+                        style={{ padding: 24, paddingBottom: 32, alignItems: "center", position: "relative", overflow: 'visible' }}
                     >
                         <Pressable
                             onPress={onClose}
-                            className="absolute top-4 right-4 bg-white/20 p-2 rounded-full z-10"
+                            className="absolute top-4 right-4 bg-white/30 p-2 rounded-full z-10 backdrop-blur-sm"
                         >
                             <X size={20} color="#fff" pointerEvents="none" />
                         </Pressable>
 
-                        <View className="flex-row items-center gap-4 mb-2 z-10">
-                            {/* Lumi Mascot */}
+                        <View className="flex-row items-center gap-6 mb-2 z-10">
+                            {/* Lumi Mascot with Glow */}
                             <View className="relative">
-                                <View className="absolute inset-0 bg-white/30 blur-md rounded-full" />
+                                <View className="absolute inset-0 bg-white/30 blur-xl rounded-full scale-125" />
                                 <Image
                                     source={images.Char}
-                                    style={{ width: 80, height: 80 }}
+                                    style={{ width: 90, height: 90 }}
                                     resizeMode="contain"
                                 />
                             </View>
 
                             <View>
-                                <Text className="text-white font-lexend-bold text-[48px] leading-[48px] shadow-sm">
-                                    {streak}
-                                </Text>
-                                <Text className="text-white font-lexend-medium text-[14px] opacity-90 uppercase tracking-widest shadow-sm">
+                                <View className="flex-row items-baseline gap-2">
+                                    <Text className="text-white font-lexend-bold text-[56px] leading-[56px] shadow-sm" style={{ textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
+                                        {streak}
+                                    </Text>
+                                    <Flame size={32} color="#fff" fill="#fff" style={{ opacity: 0.9 }} />
+                                </View>
+                                <Text className="text-white font-lexend-medium text-[16px] opacity-90 uppercase tracking-widest shadow-sm">
                                     Day Streak
                                 </Text>
                             </View>
                         </View>
 
                         {/* Background decorative elements */}
-                        <View className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
-                        <View className="absolute top-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl" />
+                        <View className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                        <View className="absolute top-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
                     </LinearGradient>
 
-                    <View className="p-6">
-                        {/* Weekly Progress */}
-                        <Text className="text-gray-800 font-lexend-bold text-[18px] mb-4">
-                            Weekly Activity
-                        </Text>
+                    <View className="px-6 -mt-6">
+                        {/* Weekly Activity Card */}
+                        <View className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-6">
+                            <View className="flex-row items-center gap-2 mb-4">
+                                <Calendar size={18} color="#4B5563" />
+                                <Text className="text-gray-700 font-lexend-bold text-[16px]">
+                                    This Week
+                                </Text>
+                            </View>
 
-                        <View className="flex-row justify-between mb-8 bg-gray-50 p-4 rounded-2xl">
-                            {displayHistory.length > 0 ? (
-                                displayHistory.map((day, index) => (
-                                    <View key={index} className="items-center gap-2">
-                                        <View
-                                            className={`w-8 h-8 rounded-full items-center justify-center ${day.active ? "bg-orange-500" : "bg-gray-200"
-                                                }`}
-                                        >
-                                            {day.active && <Flame size={14} color="#fff" fill="#fff" />}
+                            <View className="flex-row justify-between items-center">
+                                {displayHistory.length > 0 ? (
+                                    displayHistory.map((day, index) => (
+                                        <View key={index} className="items-center gap-2">
+                                            <View
+                                                className={`w-9 h-9 rounded-full items-center justify-center border-2 ${day.active
+                                                    ? "bg-orange-500 border-orange-500"
+                                                    : "bg-gray-50 border-gray-100"
+                                                    }`}
+                                            >
+                                                {day.active ? (
+                                                    <Flame size={16} color="#fff" fill="#fff" />
+                                                ) : (
+                                                    <View className="w-2 h-2 rounded-full bg-gray-200" />
+                                                )}
+                                            </View>
+                                            <Text className={`text-[11px] font-lexend-medium ${day.active ? "text-orange-600" : "text-gray-400"
+                                                }`}>
+                                                {day.day}
+                                            </Text>
                                         </View>
-                                        <Text className={`text-[12px] font-lexend-medium ${day.active ? "text-orange-600" : "text-gray-400"
-                                            }`}>
-                                            {day.day}
-                                        </Text>
-                                    </View>
-                                ))
-                            ) : (
-                                <Text className="text-gray-400 font-lexend text-center w-full">No activity data yet</Text>
-                            )}
+                                    ))
+                                ) : (
+                                    <Text className="text-gray-400 font-lexend text-center w-full">No activity data yet</Text>
+                                )}
+                            </View>
                         </View>
 
                         {/* Streak Quests */}
-                        <Text className="text-gray-800 font-lexend-bold text-[18px] mb-4">
-                            Keep the Streak Alive!
-                        </Text>
+                        <View className="flex-row items-center gap-2 mb-4">
+                            <Trophy size={18} color="#4B5563" />
+                            <Text className="text-gray-700 font-lexend-bold text-[16px]">
+                                Streak Quests
+                            </Text>
+                        </View>
 
-                        <View className="gap-3 mb-6">
+                        <View className="gap-3 mb-8">
                             {quests.length > 0 ? (
                                 quests.map((quest, index) => (
-                                    <View key={index} className="flex-row items-center bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
-                                        <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${quest.completed ? "bg-green-100" : "bg-orange-100"
+                                    <View key={index} className="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex-row items-center">
+                                        <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${quest.completed ? "bg-green-50" : "bg-orange-50"
                                             }`}>
                                             {quest.completed ? (
-                                                <CheckCircle2 size={20} color="#16A34A" />
+                                                <CheckCircle2 size={24} color="#16A34A" />
                                             ) : (
-                                                <Flame size={20} color="#EA580C" />
+                                                <Flame size={24} color="#EA580C" />
                                             )}
                                         </View>
+
                                         <View className="flex-1">
-                                            <Text className="text-gray-800 font-lexend-semibold text-[14px]">
+                                            <Text className="text-gray-800 font-lexend-semibold text-[15px] mb-1">
                                                 {quest.title}
                                             </Text>
-                                            <View className="flex-row items-center gap-2">
-                                                <Text className="text-gray-500 font-lexend text-[12px]">
-                                                    {quest.reward} XP
-                                                </Text>
-                                                {!quest.completed && quest.total > 0 && (
-                                                    <Text className="text-orange-500 font-lexend-medium text-[12px]">
-                                                        • {quest.progress}/{quest.total}
+
+                                            {quest.completed ? (
+                                                <View className="flex-row items-center gap-1">
+                                                    <Text className="text-green-600 font-lexend-medium text-[12px]">
+                                                        Completed
                                                     </Text>
-                                                )}
-                                            </View>
+                                                    <Text className="text-gray-400 font-lexend text-[12px]">
+                                                        • +{quest.reward} XP
+                                                    </Text>
+                                                </View>
+                                            ) : (
+                                                <View>
+                                                    <View className="flex-row items-center justify-between mb-1.5">
+                                                        <Text className="text-orange-600 font-lexend-medium text-[12px]">
+                                                            {quest.progress} / {quest.total} Days
+                                                        </Text>
+                                                        <Text className="text-gray-500 font-lexend text-[12px]">
+                                                            +{quest.reward} XP
+                                                        </Text>
+                                                    </View>
+                                                    {/* Progress Bar */}
+                                                    <View className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <View
+                                                            className="h-full bg-orange-500 rounded-full"
+                                                            style={{ width: `${Math.min((quest.progress / quest.total) * 100, 100)}%` }}
+                                                        />
+                                                    </View>
+                                                </View>
+                                            )}
                                         </View>
-                                        {!quest.completed && (
-                                            <View className="bg-orange-50 px-3 py-1 rounded-full">
-                                                <Text className="text-orange-600 font-lexend-medium text-[10px] uppercase">
-                                                    Go
-                                                </Text>
-                                            </View>
-                                        )}
                                     </View>
                                 ))
                             ) : (
-                                <Text className="text-gray-400 font-lexend text-center py-4">
-                                    All caught up for today!
-                                </Text>
+                                <View className="bg-gray-50 rounded-2xl p-6 items-center">
+                                    <Text className="text-gray-400 font-lexend text-center">
+                                        All quests completed! Come back tomorrow.
+                                    </Text>
+                                </View>
                             )}
                         </View>
 
@@ -181,9 +214,18 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                                 colors={["#F97316", "#EA580C"]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={{ borderRadius: 16, paddingVertical: 16, width: "100%" }}
+                                style={{
+                                    borderRadius: 20,
+                                    paddingVertical: 18,
+                                    width: "100%",
+                                    shadowColor: "#EA580C",
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.2,
+                                    shadowRadius: 4,
+                                    elevation: 4
+                                }}
                             >
-                                <Text className="text-white text-center font-lexend-bold text-[16px]">
+                                <Text className="text-white text-center font-lexend-bold text-[18px] tracking-wide">
                                     Let's Go!
                                 </Text>
                             </LinearGradient>

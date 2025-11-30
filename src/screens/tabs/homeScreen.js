@@ -1,7 +1,7 @@
 // HomeScreen.js - Updated with Stories Header
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bell, Calendar, Flame } from "lucide-react-native";
+import { Flame, Trophy } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import StoryViewerModal from "../../components/StoryViewerModal";
 import StreakModal from "../../components/StreakModal";
 import TestimoniesScreen from "../../components/TestimonalCard";
 import { VerseCard } from "../../components/VerseCard";
+import XPModal from "../../components/XPModal";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -95,6 +96,10 @@ export default function HomeScreen() {
     history: [],
     quests: []
   });
+
+  // XP Modal State
+  const [xpModalVisible, setXpModalVisible] = useState(false);
+  const [userStats, setUserStats] = useState(null);
 
   // Story Viewer State
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
@@ -291,9 +296,13 @@ export default function HomeScreen() {
       // 1. Get Current Streak & Last Active Date
       const { data: stats } = await supabase
         .from("gamification_profiles")
-        .select("current_streak, last_active_date")
+        .select("current_streak, last_active_date, current_level, total_xp")
         .eq("user_id", user.id)
         .single();
+
+      if (stats) {
+        setUserStats(stats);
+      }
 
       // 2. Get Weekly History (Last 7 days)
       const today = new Date();
@@ -558,22 +567,31 @@ export default function HomeScreen() {
           <Text className="text-[24px] font-lexend-medium text-gray-800">
             lumiverse
           </Text>
-          <View className="flex-row items-center gap-5">
-            <Pressable className="active:opacity-60">
-              <Calendar size={24} color="#1f2937" strokeWidth={2} />
-            </Pressable>
+          <View className="flex-row items-center gap-3">
             <Pressable
-              className="active:opacity-60 w-10 h-10 items-center justify-center"
+              className="active:opacity-60 flex-row items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100"
+              onPress={() => {
+                fetchStreakData();
+                setXpModalVisible(true);
+              }}
+            >
+              <Trophy size={16} pointerEvents="none" color="#4F46E5" strokeWidth={2} />
+              <Text className="text-indigo-700 font-lexend-bold text-xs">
+                Lvl {userStats?.current_level || 1}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              className="active:opacity-60 flex-row items-center gap-1 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100"
               onPress={() => {
                 fetchStreakData(); // Refresh data before showing
                 setStreakModalVisible(true);
               }}
             >
-              <Flame size={24} color={streakData.current > 0 ? "#EA580C" : "#1f2937"} fill={streakData.current > 0 ? "#EA580C" : "none"} strokeWidth={2} pointerEvents="none" />
-            </Pressable>
-            <Pressable className="active:opacity-60 relative">
-              <Bell size={24} color="#1f2937" strokeWidth={2} />
-              <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              <Flame size={16} color="#EA580C" fill="#EA580C" strokeWidth={2} pointerEvents="none" />
+              <Text className="text-orange-700 font-lexend-bold text-xs">
+                {streakData.current}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -828,6 +846,12 @@ export default function HomeScreen() {
           streak={streakData.current}
           history={streakData.history}
           quests={streakData.quests}
+        />
+
+        <XPModal
+          visible={xpModalVisible}
+          onClose={() => setXpModalVisible(false)}
+          stats={userStats}
         />
 
         {/* Story Viewer Modal */}

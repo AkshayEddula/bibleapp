@@ -37,6 +37,8 @@ const reactions = [
   { type: "blessed", emoji: "✨", label: "Blessed", color: "#ec4899" },
 ];
 
+const COMMENT_MAX_LENGTH = 250;
+
 export default function TestimoniesScreen() {
   const { user } = useAuth();
   const [testimonies, setTestimonies] = useState([]);
@@ -52,6 +54,8 @@ export default function TestimoniesScreen() {
   const [loadingComments, setLoadingComments] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
   const [submittingTestimony, setSubmittingTestimony] = useState(false);
+  const [commentError, setCommentError] = useState("");
+  const [fetchError, setFetchError] = useState("");
 
   const [userPrayers, setUserPrayers] = useState([]);
   const [loadingPrayers, setLoadingPrayers] = useState(false);
@@ -76,6 +80,12 @@ export default function TestimoniesScreen() {
   const fetchTestimonies = async () => {
     setLoading(true);
     try {
+      if (!user?.id) {
+        console.warn("User not authenticated");
+        setTestimonies([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("testimonies")
         .select(
@@ -101,55 +111,90 @@ export default function TestimoniesScreen() {
 
       if (error) throw error;
 
+      if (!data || data.length === 0) {
+        setTestimonies([]);
+        return;
+      }
+
       const testimoniesWithCounts = await Promise.all(
         data.map(async (testimony) => {
-          const { data: reactions } = await supabase
-            .from("testimony_reactions")
-            .select("reaction_type")
-            .eq("testimony_id", testimony.id);
+          try {
+            // Fetch reactions with error handling
+            const { data: reactions, error: reactionsError } = await supabase
+              .from("testimony_reactions")
+              .select("reaction_type")
+              .eq("testimony_id", testimony.id);
 
-          const reactionCounts = {
-            praise_count:
-              reactions?.filter((r) => r.reaction_type === "praise").length ||
-              0,
-            amen_count:
-              reactions?.filter((r) => r.reaction_type === "amen").length || 0,
-            blessed_count:
-              reactions?.filter((r) => r.reaction_type === "blessed").length ||
-              0,
-          };
+            if (reactionsError) {
+              console.error(`Error fetching reactions for testimony ${testimony.id}:`, reactionsError);
+            }
 
-          const { count: commentCount } = await supabase
-            .from("testimony_comments")
-            .select("id", { count: "exact", head: true })
-            .eq("testimony_id", testimony.id);
+            const reactionCounts = {
+              praise_count:
+                reactions?.filter((r) => r.reaction_type === "praise").length ||
+                0,
+              amen_count:
+                reactions?.filter((r) => r.reaction_type === "amen").length || 0,
+              blessed_count:
+                reactions?.filter((r) => r.reaction_type === "blessed").length ||
+                0,
+            };
 
-          const { data: userReactionsData } = await supabase
-            .from("testimony_reactions")
-            .select("reaction_type")
-            .eq("testimony_id", testimony.id)
-            .eq("user_id", user.id);
+            // Fetch comment count with error handling
+            const { count: commentCount, error: commentError } = await supabase
+              .from("testimony_comments")
+              .select("id", { count: "exact", head: true })
+              .eq("testimony_id", testimony.id);
 
-          const userReactions = new Set(
-            (userReactionsData || []).map((r) => r.reaction_type),
-          );
+            if (commentError) {
+              console.error(`Error fetching comment count for testimony ${testimony.id}:`, commentError);
+            }
 
-          return {
-            ...testimony,
-            author: testimony.profiles?.display_name || "Anonymous",
-            authorPhoto: testimony.profiles?.profile_photo_url,
-            reactionCounts,
-            commentCount: commentCount || 0,
-            userReactions,
-            linkedPrayer: testimony.prayer_requests,
-          };
+            // Fetch user reactions with error handling
+            const { data: userReactionsData, error: userReactionsError } = await supabase
+              .from("testimony_reactions")
+              .select("reaction_type")
+              .eq("testimony_id", testimony.id)
+              .eq("user_id", user.id);
+
+            if (userReactionsError) {
+              console.error(`Error fetching user reactions for testimony ${testimony.id}:`, userReactionsError);
+            }
+
+            const userReactions = new Set(
+              (userReactionsData || []).map((r) => r.reaction_type),
+            );
+
+            return {
+              ...testimony,
+              author: testimony.profiles?.display_name || "Anonymous",
+              authorPhoto: testimony.profiles?.profile_photo_url,
+              reactionCounts,
+              commentCount: commentCount || 0,
+              userReactions,
+              linkedPrayer: testimony.prayer_requests,
+            };
+          } catch (testimonyError) {
+            console.error(`Error processing testimony ${testimony.id}:`, testimonyError);
+            // Return testimony with default values if processing fails
+            return {
+              ...testimony,
+              author: testimony.profiles?.display_name || "Anonymous",
+              authorPhoto: testimony.profiles?.profile_photo_url,
+              reactionCounts: { praise_count: 0, amen_count: 0, blessed_count: 0 },
+              commentCount: 0,
+              userReactions: new Set(),
+              linkedPrayer: testimony.prayer_requests,
+            };
+          }
         }),
       );
 
       setTestimonies(testimoniesWithCounts);
-      console.log(testimoniesWithCounts);
     } catch (error) {
       console.error("Error fetching testimonies:", error);
+      // Set empty array on error to show empty state
+      setTestimonies([]);
     } finally {
       setLoading(false);
     }
@@ -196,11 +241,27 @@ export default function TestimoniesScreen() {
   };
 
   const handleToggleReaction = async (testimonyId, reactionType) => {
+    // Validation
+    if (!testimonyId || !reactionType) {
+      console.error("Invalid testimony ID or reaction type");
+      return;
+    }
+
+    if (!user?.id) {
+      console.error("User not authenticated");
+      return;
+    }
+
     const testimony = testimonies.find((t) => t.id === testimonyId);
-    if (!testimony) return;
+    if (!testimony) {
+      console.error("Testimony not found");
+      return;
+    }
 
     const hasReacted = testimony.userReactions.has(reactionType);
+    const previousState = testimonies;
 
+    // Optimistic update
     setTestimonies((prev) =>
       prev.map((t) => {
         if (t.id === testimonyId) {
@@ -247,12 +308,35 @@ export default function TestimoniesScreen() {
       }
     } catch (error) {
       console.error("Error toggling reaction:", error);
-      fetchTestimonies();
+      // Rollback to previous state on error
+      setTestimonies(previousState);
     }
   };
 
   const handleAddTestimony = async () => {
-    if (!newTestimony.title.trim() || !newTestimony.content.trim()) return;
+    // Validation
+    const trimmedTitle = newTestimony.title.trim();
+    const trimmedContent = newTestimony.content.trim();
+
+    if (!trimmedTitle || !trimmedContent) {
+      console.error("Title and content are required");
+      return;
+    }
+
+    if (!user?.id) {
+      console.error("User not authenticated");
+      return;
+    }
+
+    if (trimmedTitle.length > 100) {
+      console.error("Title too long");
+      return;
+    }
+
+    if (trimmedContent.length > 1000) {
+      console.error("Content too long");
+      return;
+    }
 
     setSubmittingTestimony(true);
     try {
@@ -260,8 +344,8 @@ export default function TestimoniesScreen() {
         .from("testimonies")
         .insert({
           user_id: user.id,
-          title: newTestimony.title,
-          content: newTestimony.content,
+          title: trimmedTitle,
+          content: trimmedContent,
           category: newTestimony.category,
           prayer_request_id: newTestimony.prayer_request_id,
         })
@@ -304,7 +388,7 @@ export default function TestimoniesScreen() {
       setShowAddModal(false);
     } catch (error) {
       console.error("Error adding testimony:", error);
-      alert("Failed to add testimony. Please try again.");
+      // Don't close modal on error so user can retry
     } finally {
       setSubmittingTestimony(false);
     }
@@ -312,7 +396,13 @@ export default function TestimoniesScreen() {
 
   const fetchComments = async (testimonyId) => {
     setLoadingComments(true);
+    setFetchError("");
+
     try {
+      if (!testimonyId) {
+        throw new Error("Invalid testimony ID");
+      }
+
       const { data, error } = await supabase
         .from("testimony_comments")
         .select(
@@ -334,30 +424,58 @@ export default function TestimoniesScreen() {
       const formattedComments = (data || []).map((comment) => ({
         id: comment.id,
         user: comment.profiles?.display_name || "Anonymous",
-        text: comment.comment_text,
+        text: comment.comment_text || "",
         time: timeAgo(comment.created_at),
-        isCurrentUser: comment.user_id === user.id,
+        isCurrentUser: comment.user_id === user?.id,
       }));
 
       setComments(formattedComments);
+      setFetchError("");
     } catch (error) {
       console.error("Error fetching comments:", error);
+      setFetchError("Failed to load comments. Please try again.");
+      setComments([]);
     } finally {
       setLoadingComments(false);
     }
   };
 
   const handleAddComment = async () => {
-    if (!commentText.trim() || !selectedTestimony) return;
+    // Clear previous errors
+    setCommentError("");
+
+    // Validation
+    const trimmedComment = commentText.trim();
+
+    if (!trimmedComment) {
+      setCommentError("Comment cannot be empty");
+      return;
+    }
+
+    if (trimmedComment.length > COMMENT_MAX_LENGTH) {
+      setCommentError(`Comment must be ${COMMENT_MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    if (!user?.id) {
+      setCommentError("You must be logged in to comment");
+      return;
+    }
+
+    if (!selectedTestimony?.id) {
+      setCommentError("Invalid testimony data");
+      return;
+    }
 
     setSendingComment(true);
+
     try {
       const { data, error } = await supabase
         .from("testimony_comments")
         .insert({
           testimony_id: selectedTestimony.id,
           user_id: user.id,
-          comment_text: commentText.trim(),
+          comment_text: trimmedComment,
         })
         .select(
           `
@@ -391,11 +509,34 @@ export default function TestimoniesScreen() {
         ),
       );
       setCommentText("");
+      setCommentError("");
     } catch (error) {
       console.error("Error adding comment:", error);
-      alert("Failed to add comment. Please try again.");
+
+      // Provide user-friendly error messages
+      if (error.message?.includes("network")) {
+        setCommentError("Network error. Please check your connection.");
+      } else if (error.message?.includes("duplicate")) {
+        setCommentError("This comment was already posted.");
+      } else {
+        setCommentError("Failed to post comment. Please try again.");
+      }
     } finally {
       setSendingComment(false);
+    }
+  };
+
+  // Handle comment text change with validation
+  const handleCommentTextChange = (text) => {
+    // Remove newlines to prevent multiline input
+    const singleLineText = text.replace(/[\r\n]+/g, ' ');
+
+    // Enforce character limit
+    if (singleLineText.length <= COMMENT_MAX_LENGTH) {
+      setCommentText(singleLineText);
+      setCommentError("");
+    } else {
+      setCommentError(`Maximum ${COMMENT_MAX_LENGTH} characters allowed`);
     }
   };
 
@@ -1032,6 +1173,9 @@ export default function TestimoniesScreen() {
                   className="bg-stone-50 rounded-2xl border-2 border-stone-200 px-4 py-3 font-lexend text-sm text-gray-800"
                   maxLength={100}
                 />
+                <Text className="text-xs text-gray-500 mt-1 text-right">
+                  {newTestimony.title.length}/100
+                </Text>
               </View>
 
               {/* Content */}
@@ -1280,16 +1424,37 @@ export default function TestimoniesScreen() {
             </ScrollView>
 
             <View className="px-6 py-4 border-t border-stone-200 bg-white">
+              {/* Error Message */}
+              {commentError ? (
+                <View className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
+                  <Text className="text-red-600 font-lexend-medium text-xs">
+                    {commentError}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Character Counter */}
+              <View className="flex-row items-center justify-between mb-2 px-1">
+                <Text className="text-xs font-lexend-light text-gray-400">
+                  Share encouragement
+                </Text>
+                <Text className={`text-xs font-lexend-medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {commentText.length}/{COMMENT_MAX_LENGTH}
+                </Text>
+              </View>
+
               <View className="flex-row items-center gap-3">
                 <TextInput
                   value={commentText}
-                  onChangeText={setCommentText}
+                  onChangeText={handleCommentTextChange}
                   placeholder="Add encouragement..."
                   placeholderTextColor="#9ca3af"
                   className="flex-1 bg-stone-50 rounded-full border border-stone-200 px-5 py-3 text-sm"
-                  multiline
-                  maxLength={500}
+                  maxLength={COMMENT_MAX_LENGTH}
                   editable={!sendingComment}
+                  returnKeyType="send"
+                  onSubmitEditing={handleAddComment}
+                  blurOnSubmit={false}
                 />
 
                 <TouchableOpacity

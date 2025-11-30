@@ -22,6 +22,8 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
+const COMMENT_MAX_LENGTH = 250;
+
 export const VerseCard = ({
   verse,
   isLiked,
@@ -40,6 +42,8 @@ export const VerseCard = ({
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+  const [commentError, setCommentError] = useState("");
+  const [fetchError, setFetchError] = useState("");
 
   // Trigger view recording on mount
   useEffect(() => {
@@ -69,7 +73,13 @@ export const VerseCard = ({
 
   const fetchComments = async () => {
     setLoadingComments(true);
+    setFetchError("");
+
     try {
+      if (!verse?.id) {
+        throw new Error("Invalid verse data");
+      }
+
       const { data, error } = await supabase
         .from("verse_interactions")
         .select(
@@ -91,20 +101,23 @@ export const VerseCard = ({
       if (error) throw error;
 
       // Format comments for display
-      const formattedComments = data.map((item) => ({
+      const formattedComments = (data || []).map((item) => ({
         id: item.id,
         user:
-          item.profiles?.full_name ||
+          item.profiles?.display_name ||
           item.profiles?.email?.split("@")[0] ||
           "Anonymous",
-        text: item.comment,
+        text: item.comment || "",
         time: formatTimeAgo(new Date(item.created_at)),
-        isCurrentUser: item.user_id === user.id,
+        isCurrentUser: item.user_id === user?.id,
       }));
 
       setComments(formattedComments);
+      setFetchError("");
     } catch (error) {
       console.error("Error fetching comments:", error);
+      setFetchError("Failed to load comments. Please try again.");
+      setComments([]);
     } finally {
       setLoadingComments(false);
     }
@@ -121,9 +134,34 @@ export const VerseCard = ({
   };
 
   const handleAddComment = async () => {
-    if (!commentText.trim()) return;
+    // Clear previous errors
+    setCommentError("");
+
+    // Validation
+    const trimmedComment = commentText.trim();
+
+    if (!trimmedComment) {
+      setCommentError("Comment cannot be empty");
+      return;
+    }
+
+    if (trimmedComment.length > COMMENT_MAX_LENGTH) {
+      setCommentError(`Comment must be ${COMMENT_MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    if (!user?.id) {
+      setCommentError("You must be logged in to comment");
+      return;
+    }
+
+    if (!verse?.id) {
+      setCommentError("Invalid verse data");
+      return;
+    }
 
     setSendingComment(true);
+
     try {
       const { data, error } = await supabase
         .from("verse_interactions")
@@ -131,7 +169,7 @@ export const VerseCard = ({
           user_id: user.id,
           verse_id: verse.id,
           interaction_type: "comment",
-          comment: commentText.trim(),
+          comment: trimmedComment,
         })
         .select(
           `
@@ -153,7 +191,7 @@ export const VerseCard = ({
       const newComment = {
         id: data.id,
         user:
-          data.profiles?.full_name ||
+          data.profiles?.display_name ||
           data.profiles?.email?.split("@")[0] ||
           "You",
         text: data.comment,
@@ -163,11 +201,34 @@ export const VerseCard = ({
 
       setComments([newComment, ...comments]);
       setCommentText("");
+      setCommentError("");
     } catch (error) {
       console.error("Error adding comment:", error);
-      alert("Failed to add comment. Please try again.");
+
+      // Provide user-friendly error messages
+      if (error.message?.includes("network")) {
+        setCommentError("Network error. Please check your connection.");
+      } else if (error.message?.includes("duplicate")) {
+        setCommentError("This comment was already posted.");
+      } else {
+        setCommentError("Failed to post comment. Please try again.");
+      }
     } finally {
       setSendingComment(false);
+    }
+  };
+
+  // Handle comment text change with validation
+  const handleCommentTextChange = (text) => {
+    // Remove newlines to prevent multiline input
+    const singleLineText = text.replace(/[\r\n]+/g, ' ');
+
+    // Enforce character limit
+    if (singleLineText.length <= COMMENT_MAX_LENGTH) {
+      setCommentText(singleLineText);
+      setCommentError("");
+    } else {
+      setCommentError(`Maximum ${COMMENT_MAX_LENGTH} characters allowed`);
     }
   };
 
@@ -368,7 +429,22 @@ export const VerseCard = ({
 
             {/* Comments List */}
             <ScrollView className="flex-1 px-6 py-4">
-              {loadingComments ? (
+              {fetchError ? (
+                <View className="items-center justify-center py-12">
+                  <Text className="text-5xl mb-3">⚠️</Text>
+                  <Text className="text-base font-lexend-semibold text-red-600 mb-2">
+                    {fetchError}
+                  </Text>
+                  <Pressable
+                    onPress={fetchComments}
+                    className="mt-3 bg-gray-100 px-4 py-2 rounded-full active:scale-95"
+                  >
+                    <Text className="text-sm font-lexend-medium text-gray-700">
+                      Try Again
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : loadingComments ? (
                 <View className="items-center justify-center py-12">
                   <ActivityIndicator color="#F9C846" size="large" />
                   <Text className="text-sm font-lexend-light text-gray-500 mt-3">
@@ -426,16 +502,37 @@ export const VerseCard = ({
 
             {/* Comment Input */}
             <View className="px-6 py-4 border-t border-stone-200 bg-white">
+              {/* Error Message */}
+              {commentError ? (
+                <View className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
+                  <Text className="text-red-600 font-lexend-medium text-xs">
+                    {commentError}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Character Counter */}
+              <View className="flex-row items-center justify-between mb-2 px-1">
+                <Text className="text-xs font-lexend-light text-gray-400">
+                  Share your thoughts
+                </Text>
+                <Text className={`text-xs font-lexend-medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {commentText.length}/{COMMENT_MAX_LENGTH}
+                </Text>
+              </View>
+
               <View className="flex-row items-center gap-3">
                 <TextInput
                   value={commentText}
-                  onChangeText={setCommentText}
+                  onChangeText={handleCommentTextChange}
                   placeholder="Add a comment..."
                   placeholderTextColor="#9ca3af"
                   className="flex-1 bg-stone-50 rounded-full border border-stone-200 px-5 py-3 font-lexend-light text-sm text-gray-800"
-                  multiline
-                  maxLength={500}
+                  maxLength={COMMENT_MAX_LENGTH}
                   editable={!sendingComment}
+                  returnKeyType="send"
+                  onSubmitEditing={handleAddComment}
+                  blurOnSubmit={false}
                 />
                 <Pressable
                   onPress={handleAddComment}

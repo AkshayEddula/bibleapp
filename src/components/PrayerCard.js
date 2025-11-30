@@ -26,6 +26,8 @@ const categories = [
   { value: "Thanksgiving", emoji: "🙏", colors: ["#fbbf24", "#f59e0b"] },
 ];
 
+const COMMENT_MAX_LENGTH = 250;
+
 export default function PrayerWallScreen() {
   const { user } = useAuth();
   const [prayers, setPrayers] = useState([]);
@@ -38,6 +40,8 @@ export default function PrayerWallScreen() {
   const [loadingComments, setLoadingComments] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
   const [submittingPrayer, setSubmittingPrayer] = useState(false);
+  const [commentError, setCommentError] = useState("");
+  const [fetchError, setFetchError] = useState("");
 
   const [newPrayer, setNewPrayer] = useState({
     title: "",
@@ -56,6 +60,12 @@ export default function PrayerWallScreen() {
   const fetchPrayers = async () => {
     setLoading(true);
     try {
+      if (!user?.id) {
+        console.warn("User not authenticated");
+        setPrayers([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("prayer_requests")
         .select(
@@ -75,40 +85,59 @@ export default function PrayerWallScreen() {
 
       if (error) throw error;
 
+      if (!data || data.length === 0) {
+        setPrayers([]);
+        return;
+      }
+
       const prayersWithCounts = await Promise.all(
         data.map(async (prayer) => {
-          const [reactionsResult, commentsResult, userReactionResult] =
-            await Promise.all([
-              supabase
-                .from("prayer_reactions")
-                .select("id", { count: "exact" })
-                .eq("prayer_request_id", prayer.id),
-              supabase
-                .from("prayer_comments")
-                .select("id", { count: "exact" })
-                .eq("prayer_request_id", prayer.id),
-              supabase
-                .from("prayer_reactions")
-                .select("id")
-                .eq("prayer_request_id", prayer.id)
-                .eq("user_id", user.id)
-                .single(),
-            ]);
+          try {
+            const [reactionsResult, commentsResult, userReactionResult] =
+              await Promise.all([
+                supabase
+                  .from("prayer_reactions")
+                  .select("id", { count: "exact" })
+                  .eq("prayer_request_id", prayer.id),
+                supabase
+                  .from("prayer_comments")
+                  .select("id", { count: "exact" })
+                  .eq("prayer_request_id", prayer.id),
+                supabase
+                  .from("prayer_reactions")
+                  .select("id")
+                  .eq("prayer_request_id", prayer.id)
+                  .eq("user_id", user.id)
+                  .single(),
+              ]);
 
-          return {
-            ...prayer,
-            author: prayer.profiles?.display_name || "Anonymous",
-            authorPhoto: prayer.profiles?.profile_photo_url,
-            prayingCount: reactionsResult.count || 0,
-            commentCount: commentsResult.count || 0,
-            isPraying: !!userReactionResult.data,
-          };
+            return {
+              ...prayer,
+              author: prayer.profiles?.display_name || "Anonymous",
+              authorPhoto: prayer.profiles?.profile_photo_url,
+              prayingCount: reactionsResult.count || 0,
+              commentCount: commentsResult.count || 0,
+              isPraying: !!userReactionResult.data,
+            };
+          } catch (prayerError) {
+            console.error(`Error processing prayer ${prayer.id}:`, prayerError);
+            // Return prayer with default values if processing fails
+            return {
+              ...prayer,
+              author: prayer.profiles?.display_name || "Anonymous",
+              authorPhoto: prayer.profiles?.profile_photo_url,
+              prayingCount: 0,
+              commentCount: 0,
+              isPraying: false,
+            };
+          }
         }),
       );
 
       setPrayers(prayersWithCounts);
     } catch (error) {
       console.error("Error fetching prayers:", error);
+      setPrayers([]);
     } finally {
       setLoading(false);
     }
@@ -128,9 +157,27 @@ export default function PrayerWallScreen() {
   };
 
   const handleTogglePraying = async (prayerId) => {
-    const prayer = prayers.find((p) => p.id === prayerId);
-    const isCurrentlyPraying = prayer.isPraying;
+    // Validation
+    if (!prayerId) {
+      console.error("Invalid prayer ID");
+      return;
+    }
 
+    if (!user?.id) {
+      console.error("User not authenticated");
+      return;
+    }
+
+    const prayer = prayers.find((p) => p.id === prayerId);
+    if (!prayer) {
+      console.error("Prayer not found");
+      return;
+    }
+
+    const isCurrentlyPraying = prayer.isPraying;
+    const previousState = prayers;
+
+    // Optimistic update
     setPrayers(
       prayers.map((p) =>
         p.id === prayerId
@@ -162,24 +209,35 @@ export default function PrayerWallScreen() {
       }
     } catch (error) {
       console.error("Error toggling prayer:", error);
-      setPrayers(
-        prayers.map((p) =>
-          p.id === prayerId
-            ? {
-              ...p,
-              isPraying: isCurrentlyPraying,
-              prayingCount: isCurrentlyPraying
-                ? p.prayingCount + 1
-                : p.prayingCount - 1,
-            }
-            : p,
-        ),
-      );
+      // Rollback to previous state on error
+      setPrayers(previousState);
     }
   };
 
   const handleAddPrayer = async () => {
-    if (!newPrayer.title.trim() || !newPrayer.description.trim()) return;
+    // Validation
+    const trimmedTitle = newPrayer.title.trim();
+    const trimmedDescription = newPrayer.description.trim();
+
+    if (!trimmedTitle || !trimmedDescription) {
+      console.error("Title and description are required");
+      return;
+    }
+
+    if (!user?.id) {
+      console.error("User not authenticated");
+      return;
+    }
+
+    if (trimmedTitle.length > 100) {
+      console.error("Title too long");
+      return;
+    }
+
+    if (trimmedDescription.length > 1000) {
+      console.error("Description too long");
+      return;
+    }
 
     setSubmittingPrayer(true);
     try {
@@ -187,8 +245,8 @@ export default function PrayerWallScreen() {
         .from("prayer_requests")
         .insert({
           user_id: user.id,
-          title: newPrayer.title,
-          description: newPrayer.description,
+          title: trimmedTitle,
+          description: trimmedDescription,
           category: newPrayer.category,
         })
         .select(
@@ -222,7 +280,7 @@ export default function PrayerWallScreen() {
       setShowAddModal(false);
     } catch (error) {
       console.error("Error adding prayer:", error);
-      alert("Failed to add prayer. Please try again.");
+      // Don't close modal on error so user can retry
     } finally {
       setSubmittingPrayer(false);
     }
@@ -230,7 +288,13 @@ export default function PrayerWallScreen() {
 
   const fetchComments = async (prayerId) => {
     setLoadingComments(true);
+    setFetchError("");
+
     try {
+      if (!prayerId) {
+        throw new Error("Invalid prayer ID");
+      }
+
       const { data, error } = await supabase
         .from("prayer_comments")
         .select(
@@ -249,33 +313,61 @@ export default function PrayerWallScreen() {
 
       if (error) throw error;
 
-      const formattedComments = data.map((comment) => ({
+      const formattedComments = (data || []).map((comment) => ({
         id: comment.id,
         user: comment.profiles?.display_name || "Anonymous",
-        text: comment.comment_text,
+        text: comment.comment_text || "",
         time: timeAgo(comment.created_at),
-        isCurrentUser: comment.user_id === user.id,
+        isCurrentUser: comment.user_id === user?.id,
       }));
 
       setComments(formattedComments);
+      setFetchError("");
     } catch (error) {
       console.error("Error fetching comments:", error);
+      setFetchError("Failed to load comments. Please try again.");
+      setComments([]);
     } finally {
       setLoadingComments(false);
     }
   };
 
   const handleAddComment = async () => {
-    if (!commentText.trim() || !selectedPrayer) return;
+    // Clear previous errors
+    setCommentError("");
+
+    // Validation
+    const trimmedComment = commentText.trim();
+
+    if (!trimmedComment) {
+      setCommentError("Comment cannot be empty");
+      return;
+    }
+
+    if (trimmedComment.length > COMMENT_MAX_LENGTH) {
+      setCommentError(`Comment must be ${COMMENT_MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    if (!user?.id) {
+      setCommentError("You must be logged in to comment");
+      return;
+    }
+
+    if (!selectedPrayer?.id) {
+      setCommentError("Invalid prayer data");
+      return;
+    }
 
     setSendingComment(true);
+
     try {
       const { data, error } = await supabase
         .from("prayer_comments")
         .insert({
           prayer_request_id: selectedPrayer.id,
           user_id: user.id,
-          comment_text: commentText.trim(),
+          comment_text: trimmedComment,
         })
         .select(
           `
@@ -309,11 +401,34 @@ export default function PrayerWallScreen() {
         ),
       );
       setCommentText("");
+      setCommentError("");
     } catch (error) {
       console.error("Error adding comment:", error);
-      alert("Failed to add comment. Please try again.");
+
+      // Provide user-friendly error messages
+      if (error.message?.includes("network")) {
+        setCommentError("Network error. Please check your connection.");
+      } else if (error.message?.includes("duplicate")) {
+        setCommentError("This comment was already posted.");
+      } else {
+        setCommentError("Failed to post comment. Please try again.");
+      }
     } finally {
       setSendingComment(false);
+    }
+  };
+
+  // Handle comment text change with validation
+  const handleCommentTextChange = (text) => {
+    // Remove newlines to prevent multiline input
+    const singleLineText = text.replace(/[\r\n]+/g, ' ');
+
+    // Enforce character limit
+    if (singleLineText.length <= COMMENT_MAX_LENGTH) {
+      setCommentText(singleLineText);
+      setCommentError("");
+    } else {
+      setCommentError(`Maximum ${COMMENT_MAX_LENGTH} characters allowed`);
     }
   };
 
@@ -621,6 +736,9 @@ export default function PrayerWallScreen() {
                   className="bg-stone-50 rounded-2xl border border-stone-200 px-4 py-3 font-lexend text-sm text-gray-800"
                   maxLength={100}
                 />
+                <Text className="text-xs text-gray-500 mt-1 text-right font-lexend-light">
+                  {newPrayer.title.length}/100
+                </Text>
               </View>
 
               {/* Description Input */}
@@ -639,10 +757,10 @@ export default function PrayerWallScreen() {
                   multiline
                   numberOfLines={6}
                   textAlignVertical="top"
-                  maxLength={500}
+                  maxLength={1000}
                 />
                 <Text className="text-xs text-gray-500 mt-1 text-right font-lexend-light">
-                  {newPrayer.description.length}/500
+                  {newPrayer.description.length}/1000
                 </Text>
               </View>
 
@@ -844,16 +962,37 @@ export default function PrayerWallScreen() {
 
             {/* Comment Input */}
             <View className="px-6 py-4 border-t border-stone-200 bg-white">
+              {/* Error Message */}
+              {commentError ? (
+                <View className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
+                  <Text className="text-red-600 font-lexend-medium text-xs">
+                    {commentError}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Character Counter */}
+              <View className="flex-row items-center justify-between mb-2 px-1">
+                <Text className="text-xs font-lexend-light text-gray-400">
+                  Share your prayers
+                </Text>
+                <Text className={`text-xs font-lexend-medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {commentText.length}/{COMMENT_MAX_LENGTH}
+                </Text>
+              </View>
+
               <View className="flex-row items-center gap-3">
                 <TextInput
                   value={commentText}
-                  onChangeText={setCommentText}
+                  onChangeText={handleCommentTextChange}
                   placeholder="Add a comment..."
                   placeholderTextColor="#9ca3af"
                   className="flex-1 bg-stone-50 rounded-full border border-stone-200 px-5 py-3 font-lexend-light text-sm text-gray-800"
-                  multiline
-                  maxLength={500}
+                  maxLength={COMMENT_MAX_LENGTH}
                   editable={!sendingComment}
+                  returnKeyType="send"
+                  onSubmitEditing={handleAddComment}
+                  blurOnSubmit={false}
                 />
                 <Pressable
                   onPress={handleAddComment}
