@@ -1,11 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import OnboardingScreen from "../screens/auth/onboarding";
-import OnboardingSteps from "../screens/auth/onboardingSteps"; // Add this import
-import LoginScreen from "../screens/auth/login";
-import { useAuth } from "../context/AuthContext";
-import TabNavigator from "./TavNavigator";
+import { ActivityIndicator, View } from "react-native";
 import PrayerWallScreen from "../components/PrayerCard";
 import TestimoniesScreen from "../components/TestimonalCard";
+import { useAuth } from "../context/AuthContext";
+import LoginScreen from "../screens/auth/login";
+import OnboardingScreen from "../screens/auth/onboarding";
+import OnboardingSteps from "../screens/auth/onboardingSteps"; // Add this import
+import TabNavigator from "./TavNavigator";
 
 const Stack = createNativeStackNavigator();
 
@@ -14,7 +15,11 @@ export default function RootNavigator() {
 
   // Show loading screen while checking auth status
   if (isLoading) {
-    return null; // Or a loading component
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
+        <ActivityIndicator size="large" color="#F9C846" />
+      </View>
+    );
   }
 
   return (

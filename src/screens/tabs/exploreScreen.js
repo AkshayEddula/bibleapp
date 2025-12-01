@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowRight, Bookmark, BookOpen, Heart, MessageCircle, Play, Search, Share2 } from "lucide-react-native";
+import { ArrowRight, Bookmark, BookOpen, Heart, MessageCircle, Play, Search, Share2, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -58,10 +58,26 @@ export default function ExploreScreen() {
   const [reelsVerses, setReelsVerses] = useState([]);
   const [initialReelsIndex, setInitialReelsIndex] = useState(0);
   const [reelsLoading, setReelsLoading] = useState(false); // New state
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     fetchExploreData();
   }, []);
+
+  // Search functionality with debouncing
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (searchQuery.trim().length > 0) {
+        performSearch(searchQuery.trim());
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
 
   const fetchExploreData = async () => {
     try {
@@ -146,6 +162,36 @@ export default function ExploreScreen() {
       console.error("Error fetching explore data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const performSearch = async (query) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Optimized search for large datasets
+      // Use textSearch if available, otherwise use ilike
+      const { data: versesData, error: versesError } = await supabase
+        .from("bible_verses")
+        .select("id, book, chapter, verse, content")
+        .or(`content.ilike.%${query}%,book.ilike.%${query}%`)
+        .limit(30); // Limit to 30 results for performance
+
+      if (versesError) throw versesError;
+
+      // Don't fetch interaction counts for search results to improve performance
+      // They'll be loaded when user opens the verse in ReelsViewer
+      setSearchResults(versesData || []);
+    } catch (error) {
+      console.error("Error searching:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -520,6 +566,15 @@ export default function ExploreScreen() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
+              {searchQuery.length > 0 && (
+                <Pressable
+                  onPress={() => setSearchQuery("")}
+                  className="ml-2 active:opacity-50"
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={18} color="#9ca3af" pointerEvents="none" />
+                </Pressable>
+              )}
             </View>
           </View>
 
@@ -527,6 +582,72 @@ export default function ExploreScreen() {
             <View className="py-20">
               <ActivityIndicator size="large" color="#F9C846" />
             </View>
+          ) : searchQuery.trim().length > 0 ? (
+            // Search Results View
+            <>
+              <View className="px-6 mb-4">
+                <Text className="text-lg font-lexend-bold text-gray-900 mb-2">
+                  Search Results
+                </Text>
+                <Text className="text-sm font-lexend-light text-gray-500">
+                  {isSearching ? "Searching..." : `Found ${searchResults.length} verse${searchResults.length !== 1 ? 's' : ''}`}
+                </Text>
+              </View>
+
+              {isSearching ? (
+                <View className="py-20">
+                  <ActivityIndicator size="large" color="#F9C846" />
+                </View>
+              ) : searchResults.length === 0 ? (
+                <View className="items-center py-20 px-6">
+                  <Text className="text-5xl mb-4">🔍</Text>
+                  <Text className="text-lg font-lexend-semibold text-gray-800 mb-2">
+                    No results found
+                  </Text>
+                  <Text className="text-sm font-lexend-light text-gray-500 text-center">
+                    Try searching for different keywords or book names
+                  </Text>
+                </View>
+              ) : (
+                <View className="px-6">
+                  <View className="flex-row flex-wrap justify-between">
+                    {searchResults.map((verse, index) => (
+                      <Pressable
+                        key={verse.id}
+                        onPress={() => handleOpenReels(searchResults, index)}
+                        className="rounded-2xl mb-3 overflow-hidden bg-white"
+                        style={{
+                          width: COLUMN_WIDTH,
+                          height: 100,
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 6,
+                          elevation: 2
+                        }}
+                      >
+                        <View className="flex-1 p-4 justify-between">
+                          <View>
+                            <Text className="text-gray-900 font-lexend-bold text-base mb-1">
+                              {verse.book}
+                            </Text>
+                            <Text className="text-gray-500 font-lexend-medium text-xs">
+                              Chapter {verse.chapter}:{verse.verse}
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center justify-between">
+                            <Text className="text-gray-400 font-lexend-light text-xs flex-1" numberOfLines={1}>
+                              {verse.content.substring(0, 30)}...
+                            </Text>
+                            <ArrowRight size={14} color="#9ca3af" />
+                          </View>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </>
           ) : (
             <>
               {/* Trending Grid (Lumi Style) */}

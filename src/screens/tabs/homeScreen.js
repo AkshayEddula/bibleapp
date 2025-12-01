@@ -746,6 +746,17 @@ export default function HomeScreen() {
   const [viewedVerses, setViewedVerses] = useState(new Set());
 
   const handleView = async (verseId) => {
+    // Validation
+    if (!verseId) {
+      console.warn("handleView called with invalid verseId");
+      return;
+    }
+
+    if (!user?.id) {
+      console.warn("User not authenticated, skipping view recording");
+      return;
+    }
+
     if (viewedVerses.has(verseId)) return;
 
     // Add to local set immediately
@@ -761,14 +772,6 @@ export default function HomeScreen() {
     }));
 
     try {
-      // Check if already viewed in DB (optional, but good for data integrity if session resets)
-      // For now, we'll rely on the insert failing or just inserting. 
-      // Ideally, we should have a unique constraint on (user_id, verse_id, interaction_type) for views too, 
-      // or just insert and let the backend handle it.
-      // Given the user request "registerd once only per verse per user", 
-      // we should try to select first or rely on a unique index.
-      // Assuming we just want to record it if not present:
-
       const { error } = await supabase.from("verse_interactions").insert({
         user_id: user.id,
         verse_id: verseId,
@@ -778,11 +781,11 @@ export default function HomeScreen() {
       if (error) {
         // If error is duplicate key (code 23505), it's fine, we just ignore it.
         if (error.code !== '23505') {
-          throw error;
+          console.error("Error recording view:", error.message || error);
         }
       }
     } catch (error) {
-      console.error("Error recording view:", error);
+      console.error("Error recording view:", error.message || error);
       // We don't revert the optimistic update for views usually, as it's less critical than likes
     }
   };

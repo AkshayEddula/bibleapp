@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { BookMarked, FileText, Heart, Info, LogOut, MessageSquare, Settings, Shield, X } from "lucide-react-native";
+import { FileText, Heart, Info, LogOut, MessageSquare, Settings, Shield, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -63,18 +63,31 @@ export default function ProfileScreen() {
     try {
       setLoading(true);
 
-      // Fetch profile
-      const { data: profileData } = await supabase
+      // Validation
+      if (!user?.id) {
+        console.warn("User not authenticated");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Fetch profile with error handling
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      setProfile(profileData);
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        // Continue with other data even if profile fails
+      } else {
+        setProfile(profileData);
+      }
 
-      // Fetch testimonials with counts
-      const { data: testimonialsData } = await supabase
-        .from("testimonials")
+      // Fetch testimonials with counts and error handling
+      const { data: testimonialsData, error: testimonialsError } = await supabase
+        .from("testimonies")
         .select(`
           *,
           prayer_requests (
@@ -86,54 +99,84 @@ export default function ProfileScreen() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
+      if (testimonialsError) {
+        console.error("Error fetching testimonials:", testimonialsError);
+      }
+
       const testimonialsWithCounts = await Promise.all(
         (testimonialsData || []).map(async (t) => {
-          const [reactionsResult, commentsResult] = await Promise.all([
-            supabase
-              .from("testimony_reactions")
-              .select("id", { count: "exact" })
-              .eq("testimony_id", t.id),
-            supabase
-              .from("testimony_comments")
-              .select("id", { count: "exact" })
-              .eq("testimony_id", t.id)
-          ]);
+          try {
+            const [reactionsResult, commentsResult] = await Promise.all([
+              supabase
+                .from("testimony_reactions")
+                .select("id", { count: "exact" })
+                .eq("testimony_id", t.id),
+              supabase
+                .from("testimony_comments")
+                .select("id", { count: "exact" })
+                .eq("testimony_id", t.id)
+            ]);
 
-          return {
-            ...t,
-            type: 'testimonial',
-            likes_count: reactionsResult.count || 0,
-            commentCount: commentsResult.count || 0
-          };
+            return {
+              ...t,
+              type: 'testimonial',
+              likes_count: reactionsResult.count || 0,
+              commentCount: commentsResult.count || 0
+            };
+          } catch (error) {
+            console.error(`Error processing testimony ${t.id}:`, error);
+            // Return testimony with default counts if processing fails
+            return {
+              ...t,
+              type: 'testimonial',
+              likes_count: 0,
+              commentCount: 0
+            };
+          }
         })
       );
 
-      // Fetch prayers with counts
-      const { data: prayersData } = await supabase
+      // Fetch prayers with counts and error handling
+      const { data: prayersData, error: prayersError } = await supabase
         .from("prayer_requests")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
+      if (prayersError) {
+        console.error("Error fetching prayers:", prayersError);
+      }
+
       const prayersWithCounts = await Promise.all(
         (prayersData || []).map(async (p) => {
-          const [reactionsResult, commentsResult] = await Promise.all([
-            supabase
-              .from("prayer_reactions")
-              .select("id", { count: "exact" })
-              .eq("prayer_request_id", p.id),
-            supabase
-              .from("prayer_comments")
-              .select("id", { count: "exact" })
-              .eq("prayer_request_id", p.id)
-          ]);
+          try {
+            const [reactionsResult, commentsResult] = await Promise.all([
+              supabase
+                .from("prayer_reactions")
+                .select("id", { count: "exact" })
+                .eq("prayer_request_id", p.id),
+              supabase
+                .from("prayer_comments")
+                .select("id", { count: "exact" })
+                .eq("prayer_request_id", p.id)
+            ]);
 
-          return {
-            ...p,
-            type: 'prayer',
-            prayingCount: reactionsResult.count || 0,
-            commentCount: commentsResult.count || 0
-          };
+            return {
+              ...p,
+              type: 'prayer',
+              prayingCount: reactionsResult.count || 0,
+              commentCount: commentsResult.count || 0
+            };
+          } catch (error) {
+            console.error(`Error processing prayer ${p.id}:`, error);
+            // Return prayer with default counts if processing fails
+            return {
+              ...p,
+              type: 'prayer',
+              prayingCount: 0,
+              commentCount: 0
+            };
+          }
         })
       );
 
@@ -145,8 +188,8 @@ export default function ProfileScreen() {
 
       setPosts(combined);
 
-      // Fetch liked verses
-      const { data: likedData } = await supabase
+      // Fetch liked verses with error handling
+      const { data: likedData, error: likedError } = await supabase
         .from("verse_interactions")
         .select(`
           *,
@@ -156,10 +199,15 @@ export default function ProfileScreen() {
         .eq("interaction_type", "like")
         .order("created_at", { ascending: false });
 
-      setLikedVerses(likedData?.map(item => item.bible_verses).filter(Boolean) || []);
+      if (likedError) {
+        console.error("Error fetching liked verses:", likedError);
+        setLikedVerses([]);
+      } else {
+        setLikedVerses(likedData?.map(item => item.bible_verses).filter(Boolean) || []);
+      }
 
-      // Fetch saved verses
-      const { data: savedData } = await supabase
+      // Fetch saved verses with error handling
+      const { data: savedData, error: savedError } = await supabase
         .from("verse_interactions")
         .select(`
           *,
@@ -169,7 +217,12 @@ export default function ProfileScreen() {
         .eq("interaction_type", "save")
         .order("created_at", { ascending: false });
 
-      setSavedVerses(savedData?.map(item => item.bible_verses).filter(Boolean) || []);
+      if (savedError) {
+        console.error("Error fetching saved verses:", savedError);
+        setSavedVerses([]);
+      } else {
+        setSavedVerses(savedData?.map(item => item.bible_verses).filter(Boolean) || []);
+      }
 
       // Update stats
       setStats({
@@ -192,30 +245,57 @@ export default function ProfileScreen() {
   };
 
   const handleVersePress = async (verse, index, allVerses) => {
+    // Validation
+    if (!verse || !allVerses || allVerses.length === 0) {
+      console.warn("Invalid verse data");
+      return;
+    }
+
     setReelsLoading(true);
     setReelsVerses([]);
     setReelsVisible(true);
 
-    // Fetch interaction counts for the verses
-    const verseIds = allVerses.map(v => v.id);
-    const { data: countsData } = await supabase
-      .from("verse_interaction_counts")
-      .select("*")
-      .in("verse_id", verseIds);
+    try {
+      // Fetch interaction counts for the verses
+      const verseIds = allVerses.map(v => v.id).filter(Boolean);
 
-    const countsMap = (countsData || []).reduce((acc, curr) => {
-      acc[curr.verse_id] = curr;
-      return acc;
-    }, {});
+      if (verseIds.length === 0) {
+        setReelsVerses(allVerses);
+        setInitialReelsIndex(index);
+        setReelsLoading(false);
+        return;
+      }
 
-    const versesWithCounts = allVerses.map(v => ({
-      ...v,
-      verse_interaction_counts: countsMap[v.id] || {}
-    }));
+      const { data: countsData, error: countsError } = await supabase
+        .from("verse_interaction_counts")
+        .select("*")
+        .in("verse_id", verseIds);
 
-    setReelsVerses(versesWithCounts);
-    setInitialReelsIndex(index);
-    setReelsLoading(false);
+      if (countsError) {
+        console.error("Error fetching verse counts:", countsError);
+        // Continue with verses without counts
+      }
+
+      const countsMap = (countsData || []).reduce((acc, curr) => {
+        acc[curr.verse_id] = curr;
+        return acc;
+      }, {});
+
+      const versesWithCounts = allVerses.map(v => ({
+        ...v,
+        verse_interaction_counts: countsMap[v.id] || {}
+      }));
+
+      setReelsVerses(versesWithCounts);
+      setInitialReelsIndex(index);
+    } catch (error) {
+      console.error("Error in handleVersePress:", error);
+      // Set verses without counts on error
+      setReelsVerses(allVerses);
+      setInitialReelsIndex(index);
+    } finally {
+      setReelsLoading(false);
+    }
   };
 
   const renderVerseCard = ({ item, index }) => {
@@ -223,7 +303,7 @@ export default function ProfileScreen() {
 
     // Different gradient colors for liked vs saved
     const gradientColors = activeTab === "liked"
-      ? ['rgba(239, 68, 68, 0.85)', 'rgba(220, 38, 38, 0.9)'] // Red gradient for liked
+      ? ['rgba(167, 139, 250, 0.9)', 'rgba(139, 92, 246, 0.95)'] // Soft purple gradient for liked
       : ['rgba(59, 130, 246, 0.85)', 'rgba(37, 99, 235, 0.9)']; // Blue gradient for saved
 
     return (
@@ -274,6 +354,13 @@ export default function ProfileScreen() {
   };
 
   const fetchPostDetails = async (post) => {
+    // Validation
+    if (!post || !post.id || !post.type) {
+      console.warn("Invalid post data");
+      setLoadingComments(false);
+      return;
+    }
+
     setLoadingComments(true);
     try {
       const isTestimonial = post.type === 'testimonial';
@@ -295,17 +382,25 @@ export default function ProfileScreen() {
         .eq(idField, post.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-
-      setPostComments(data || []);
+      if (error) {
+        console.error("Error fetching comments:", error);
+        setPostComments([]);
+      } else {
+        setPostComments(data || []);
+      }
     } catch (error) {
       console.error("Error fetching comments:", error);
+      setPostComments([]);
     } finally {
       setLoadingComments(false);
     }
   };
 
   const handlePostPress = (post) => {
+    if (!post) {
+      console.warn("Invalid post");
+      return;
+    }
     setSelectedPost(post);
     setDetailModalVisible(true);
     fetchPostDetails(post);
@@ -315,25 +410,25 @@ export default function ProfileScreen() {
   const renderPostCard = ({ item }) => {
     const isTestimonial = item.type === 'testimonial';
 
-    // Beautiful gradients for different post types
+    // Softer, more modern gradients
     const gradientColors = isTestimonial
-      ? ['#fbbf24', '#f59e0b', '#d97706'] // Warm gold gradient for testimonials
-      : ['#8b5cf6', '#7c3aed', '#6d28d9']; // Purple gradient for prayers
+      ? ['#fbbf24', '#f59e0b'] // Warm gold for testimonials
+      : ['#a78bfa', '#8b5cf6']; // Soft purple for prayers
 
     return (
       <Pressable
         onPress={() => handlePostPress(item)}
         style={{
           width: POST_CARD_SIZE,
-          height: POST_CARD_SIZE * 1.2,
+          height: POST_CARD_SIZE * 1.3, // Slightly taller for better proportions
           margin: 6,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
+          shadowColor: isTestimonial ? '#f59e0b' : '#8b5cf6',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
           elevation: 4,
         }}
-        className="rounded-3xl overflow-hidden"
+        className="rounded-[24px] overflow-hidden bg-white"
       >
         <LinearGradient
           colors={gradientColors}
@@ -345,35 +440,49 @@ export default function ProfileScreen() {
             justifyContent: 'space-between',
           }}
         >
-          {/* Type Badge */}
-          <View className="flex-row items-center gap-1.5 self-start bg-white/25 px-3 py-1.5 rounded-full mb-2">
-            <Text className="text-[11px]">{isTestimonial ? '✨' : '🙏'}</Text>
-            <Text className="text-white text-[10px] font-lexend-bold uppercase tracking-wide">
-              {isTestimonial ? 'Testimony' : 'Prayer'}
-            </Text>
+          {/* Header */}
+          <View className="flex-row justify-between items-start">
+            <View className="bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md">
+              <Text className="text-white text-[10px] font-lexend-bold uppercase tracking-wider">
+                {isTestimonial ? 'Story' : 'Prayer'}
+              </Text>
+            </View>
+            <View className="bg-white/20 w-8 h-8 rounded-full items-center justify-center">
+              <Text className="text-sm">{isTestimonial ? '✨' : '🙏'}</Text>
+            </View>
           </View>
 
-          <View className="flex-1">
-            <Text className="text-white font-lexend-bold text-sm mb-2 leading-5" numberOfLines={3}>
+          {/* Content */}
+          <View className="flex-1 justify-center py-2">
+            <Text className="text-white font-lexend-bold text-lg leading-6 mb-2" numberOfLines={3}>
               {item.title}
             </Text>
-            <Text className="text-white/90 font-lexend-regular text-xs leading-5" numberOfLines={4}>
+            <Text className="text-white/90 font-lexend-medium text-xs leading-4" numberOfLines={2}>
               {isTestimonial ? item.content : item.description}
             </Text>
           </View>
 
-          <View className="flex-row items-center justify-between mt-2 pt-3 border-t border-white/20">
-            <Text className="text-white/70 text-[10px] font-lexend-medium">
+          {/* Footer */}
+          <View className="flex-row items-center justify-between pt-3 border-t border-white/20">
+            <Text className="text-white/80 text-[10px] font-lexend-medium">
               {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </Text>
-            {isTestimonial && item.prayer_requests && (
-              <View className="flex-row items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full">
-                <MessageSquare size={11} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
-                <Text className="text-white text-[10px] font-lexend-semibold">
-                  {item.commentCount || 0}
+            <View className="flex-row items-center gap-2">
+              {item.commentCount > 0 && (
+                <View className="flex-row items-center gap-1">
+                  <MessageSquare size={10} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
+                  <Text className="text-white text-[10px] font-lexend-bold">
+                    {item.commentCount}
+                  </Text>
+                </View>
+              )}
+              <View className="flex-row items-center gap-1">
+                <Heart size={10} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
+                <Text className="text-white text-[10px] font-lexend-bold">
+                  {isTestimonial ? item.likes_count : item.prayingCount}
                 </Text>
               </View>
-            )}
+            </View>
           </View>
         </LinearGradient>
       </Pressable>
@@ -461,203 +570,229 @@ export default function ProfileScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header - Enhanced with Gradient */}
+        {/* Beautiful Header with Lumi */}
         <LinearGradient
-          colors={['#fafafa', '#ffffff', '#ffffff']}
+          colors={['#fef3c7', '#fde68a', '#ffffff']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={{
-            paddingTop: 60,
-            paddingBottom: 24,
-            paddingHorizontal: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: '#f3f4f6',
-          }}
+          style={{ paddingBottom: 32 }}
         >
           {/* Settings Button */}
           <Pressable
             onPress={() => setSettingsVisible(true)}
+            className="active:opacity-60"
             style={{
               position: 'absolute',
               top: 60,
               right: 20,
               zIndex: 100,
-              backgroundColor: '#ffffff',
+              backgroundColor: 'rgba(255,255,255,0.95)',
               borderRadius: 12,
               padding: 10,
-              borderWidth: 1,
-              borderColor: '#e5e7eb',
-              shadowColor: '#000',
+              shadowColor: '#f59e0b',
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 3,
-              elevation: 2,
-            }}
-          >
-            <Settings size={20} color="#6b7280" strokeWidth={2} pointerEvents="none" />
-          </Pressable>
-
-          {/* Profile Content */}
-          <View>
-            {/* Avatar with Gradient Border */}
-            <View className="items-center mb-4">
-              <View
-                style={{
-                  padding: 3,
-                  borderRadius: 64,
-                  marginBottom: 4,
-                }}
-              >
-                <LinearGradient
-                  colors={['#f59e0b', '#ef4444', '#3b82f6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    padding: 3,
-                    borderRadius: 64,
-                  }}
-                >
-                  <View
-                    className="w-24 h-24 rounded-full bg-white items-center justify-center"
-                  >
-                    {profile?.profile_photo_url ? (
-                      <Image
-                        source={{ uri: profile.profile_photo_url }}
-                        className="w-full h-full rounded-full"
-                      />
-                    ) : (
-                      <Text className="text-gray-600 font-lexend-bold text-3xl">
-                        {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
-                      </Text>
-                    )}
-                  </View>
-                </LinearGradient>
-              </View>
-            </View>
-
-            {/* Name and Email */}
-            <View className="items-center mb-6">
-              <Text className="text-gray-900 font-lexend-bold text-xl mb-1" numberOfLines={1}>
-                {profile?.display_name || user.email?.split('@')[0]}
-              </Text>
-              <Text className="text-gray-500 font-lexend-regular text-sm" numberOfLines={1}>
-                {user.email}
-              </Text>
-            </View>
-
-            {/* Stats Card with Gradient Accents */}
-            <View style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 20,
-              paddingVertical: 12,
-              paddingHorizontal: 12,
-              borderWidth: 1,
-              borderColor: '#e5e7eb',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
+              shadowOpacity: 0.15,
               shadowRadius: 8,
               elevation: 3,
-            }}>
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'space-around',
-              }}>
-                <Pressable
-                  onPress={() => setActiveTab("posts")}
-                  className="items-center"
+            }}
+          >
+            <Settings size={20} color="#78716c" strokeWidth={2} pointerEvents="none" />
+          </Pressable>
+
+          {/* Header Content with Lumi */}
+          <View style={{ paddingTop: 70, paddingHorizontal: 24 }}>
+            {/* Lumi Character */}
+            <View className="items-center mb-6">
+              <Image
+                source={images.Char}
+                style={{ width: 120, height: 120 }}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* User Info Card */}
+            <View
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                borderRadius: 20,
+                paddingVertical: 20,
+                paddingHorizontal: 24,
+                shadowColor: '#f59e0b',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+                elevation: 3,
+                borderWidth: 1,
+                borderColor: 'rgba(251, 191, 36, 0.2)',
+              }}
+            >
+              <View className="items-center">
+                <Text
+                  className="text-gray-900 font-lexend-bold text-2xl mb-1.5"
+                  numberOfLines={1}
+                  style={{ letterSpacing: -0.5 }}
                 >
-                  <View className="bg-amber-50 w-12 h-12 rounded-full items-center justify-center mb-2">
-                    <Text className="text-amber-600 font-lexend-bold text-lg">{stats.postsCount}</Text>
-                  </View>
-                  <Text className="text-gray-600 font-lexend-medium text-xs">Posts</Text>
-                </Pressable>
-                <View style={{ width: 1, backgroundColor: '#e5e7eb' }} />
-                <Pressable
-                  onPress={() => setActiveTab("liked")}
-                  className="items-center"
-                >
-                  <View className="bg-red-50 w-12 h-12 rounded-full items-center justify-center mb-2">
-                    <Text className="text-red-600 font-lexend-bold text-lg">{stats.likedCount}</Text>
-                  </View>
-                  <Text className="text-gray-600 font-lexend-medium text-xs">Liked</Text>
-                </Pressable>
-                <View style={{ width: 1, backgroundColor: '#e5e7eb' }} />
-                <Pressable
-                  onPress={() => setActiveTab("saved")}
-                  className="items-center"
-                >
-                  <View className="bg-blue-50 w-12 h-12 rounded-full items-center justify-center mb-2">
-                    <Text className="text-blue-600 font-lexend-bold text-lg">{stats.savedCount}</Text>
-                  </View>
-                  <Text className="text-gray-600 font-lexend-medium text-xs">Saved</Text>
-                </Pressable>
+                  {profile?.display_name || user.email?.split('@')[0]}
+                </Text>
+                <Text className="text-gray-500 font-lexend-regular text-sm" numberOfLines={1}>
+                  {user.email}
+                </Text>
               </View>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Tabs */}
-        <View className="flex-row border-b border-gray-200 px-6 mb-4 mt-4">
-          <Pressable
-            onPress={() => setActiveTab("posts")}
-            className={`flex-1 items-center pb-3 border-b-2 ${activeTab === "posts" ? "border-amber-500" : "border-transparent"
-              }`}
-          >
-            <MessageSquare
-              size={20}
-              color={activeTab === "posts" ? "#f59e0b" : "#9ca3af"}
-              strokeWidth={2}
-            />
-            <Text
-              className={`font-lexend-medium text-xs mt-1 ${activeTab === "posts" ? "text-amber-600" : "text-gray-500"
-                }`}
+        {/* Stats Cards - Beautiful Gradients */}
+        <View style={{ paddingHorizontal: 20, marginTop: -12 }}>
+          <View className="flex-row justify-between gap-2.5">
+            <Pressable
+              onPress={() => setActiveTab("posts")}
+              className="flex-1"
+              style={{
+                shadowColor: activeTab === "posts" ? '#f59e0b' : '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: activeTab === "posts" ? 0.25 : 0.08,
+                shadowRadius: 12,
+                elevation: activeTab === "posts" ? 6 : 2,
+              }}
             >
-              Posts
-            </Text>
-          </Pressable>
+              <LinearGradient
+                colors={activeTab === "posts" ? ['#fbbf24', '#f59e0b'] : ['#ffffff', '#fafafa']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: 20,
+                  paddingVertical: 20,
+                  paddingHorizontal: 16,
+                  borderWidth: activeTab === "posts" ? 0 : 1,
+                  borderColor: '#f3f4f6',
+                }}
+              >
+                <View className="items-center">
+                  <Text
+                    className="font-lexend-medium mb-1"
+                    style={{
+                      color: activeTab === "posts" ? '#ffffff' : '#1f2937',
+                      fontSize: 24,
+                      letterSpacing: -1.5
+                    }}
+                  >
+                    {stats.postsCount}
+                  </Text>
+                  <Text
+                    className="font-lexend-semibold uppercase"
+                    style={{
+                      color: activeTab === "posts" ? 'rgba(255,255,255,0.9)' : '#6b7280',
+                      fontSize: 11,
+                      letterSpacing: -0.4
+                    }}
+                  >
+                    Posts
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
 
-          <Pressable
-            onPress={() => setActiveTab("liked")}
-            className={`flex-1 items-center pb-3 border-b-2 ${activeTab === "liked" ? "border-red-500" : "border-transparent"
-              }`}
-          >
-            <Heart
-              size={20}
-              color={activeTab === "liked" ? "#ef4444" : "#9ca3af"}
-              fill={activeTab === "liked" ? "#ef4444" : "transparent"}
-              strokeWidth={2}
-            />
-            <Text
-              className={`font-lexend-medium text-xs mt-1 ${activeTab === "liked" ? "text-red-600" : "text-gray-500"
-                }`}
+            <Pressable
+              onPress={() => setActiveTab("liked")}
+              className="flex-1"
+              style={{
+                shadowColor: activeTab === "liked" ? '#8b5cf6' : '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: activeTab === "liked" ? 0.25 : 0.08,
+                shadowRadius: 12,
+                elevation: activeTab === "liked" ? 6 : 2,
+              }}
             >
-              Liked
-            </Text>
-          </Pressable>
+              <LinearGradient
+                colors={activeTab === "liked" ? ['#a78bfa', '#c4b5fd'] : ['#ffffff', '#fafafa']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: 20,
+                  paddingVertical: 20,
+                  paddingHorizontal: 16,
+                  borderWidth: activeTab === "liked" ? 0 : 1,
+                  borderColor: '#f3f4f6',
+                }}
+              >
+                <View className="items-center">
+                  <Text
+                    className="font-lexend-medium mb-1"
+                    style={{
+                      color: activeTab === "liked" ? '#ffffff' : '#1f2937',
+                      fontSize: 24,
+                      letterSpacing: -0.4
+                    }}
+                  >
+                    {stats.likedCount}
+                  </Text>
+                  <Text
+                    className="font-lexend-semibold uppercase"
+                    style={{
+                      color: activeTab === "liked" ? 'rgba(255,255,255,0.9)' : '#6b7280',
+                      fontSize: 11,
+                      letterSpacing: -0.4
+                    }}
+                  >
+                    Liked
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
 
-          <Pressable
-            onPress={() => setActiveTab("saved")}
-            className={`flex-1 items-center pb-3 border-b-2 ${activeTab === "saved" ? "border-blue-500" : "border-transparent"
-              }`}
-          >
-            <BookMarked
-              size={20}
-              color={activeTab === "saved" ? "#3b82f6" : "#9ca3af"}
-              fill={activeTab === "saved" ? "#3b82f6" : "transparent"}
-              strokeWidth={2}
-            />
-            <Text
-              className={`font-lexend-medium text-xs mt-1 ${activeTab === "saved" ? "text-blue-600" : "text-gray-500"
-                }`}
+            <Pressable
+              onPress={() => setActiveTab("saved")}
+              className="flex-1"
+              style={{
+                shadowColor: activeTab === "saved" ? '#3b82f6' : '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: activeTab === "saved" ? 0.25 : 0.08,
+                shadowRadius: 12,
+                elevation: activeTab === "saved" ? 6 : 2,
+              }}
             >
-              Saved
-            </Text>
-          </Pressable>
+              <LinearGradient
+                colors={activeTab === "saved" ? ['#60a5fa', '#3b82f6'] : ['#ffffff', '#fafafa']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: 20,
+                  paddingVertical: 20,
+                  paddingHorizontal: 16,
+                  borderWidth: activeTab === "saved" ? 0 : 1,
+                  borderColor: '#f3f4f6',
+                }}
+              >
+                <View className="items-center">
+                  <Text
+                    className="font-lexend-medium mb-1"
+                    style={{
+                      color: activeTab === "saved" ? '#ffffff' : '#1f2937',
+                      fontSize: 24,
+                      letterSpacing: -0.4
+                    }}
+                  >
+                    {stats.savedCount}
+                  </Text>
+                  <Text
+                    className="font-lexend-semibold uppercase"
+                    style={{
+                      color: activeTab === "saved" ? 'rgba(255,255,255,0.9)' : '#6b7280',
+                      fontSize: 11,
+                      letterSpacing: -0.4
+                    }}
+                  >
+                    Saved
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Content Grid */}
-        {renderContent()}
+        {/* Content */}
+        <View className="flex-1 mt-6">{renderContent()}</View>
 
         {/* Bottom Spacing */}
         <View className="h-8" />
