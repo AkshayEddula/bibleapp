@@ -4,12 +4,13 @@ import { Heart, MessageCircle, Plus, Send, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
@@ -138,6 +139,7 @@ export default function PrayerWallScreen() {
     } catch (error) {
       console.error("Error fetching prayers:", error);
       setPrayers([]);
+      Alert.alert("Connection Issue", "Could not load prayers.");
     } finally {
       setLoading(false);
     }
@@ -211,6 +213,7 @@ export default function PrayerWallScreen() {
       console.error("Error toggling prayer:", error);
       // Rollback to previous state on error
       setPrayers(previousState);
+      Alert.alert("Error", "Could not update prayer status.");
     }
   };
 
@@ -281,6 +284,7 @@ export default function PrayerWallScreen() {
     } catch (error) {
       console.error("Error adding prayer:", error);
       // Don't close modal on error so user can retry
+      Alert.alert("Error", "Failed to add prayer request.");
     } finally {
       setSubmittingPrayer(false);
     }
@@ -327,6 +331,7 @@ export default function PrayerWallScreen() {
       console.error("Error fetching comments:", error);
       setFetchError("Failed to load comments. Please try again.");
       setComments([]);
+      Alert.alert("Error", "Could not load comments.");
     } finally {
       setLoadingComments(false);
     }
@@ -412,6 +417,7 @@ export default function PrayerWallScreen() {
         setCommentError("This comment was already posted.");
       } else {
         setCommentError("Failed to post comment. Please try again.");
+        Alert.alert("Error", "Failed to post comment.");
       }
     } finally {
       setSendingComment(false);
@@ -569,7 +575,7 @@ export default function PrayerWallScreen() {
                     style={{
                       shadowColor: "#000",
                       shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.06,
+                      shadowOpacity: 0.05,
                       shadowRadius: 8,
                       elevation: 2,
                     }}
@@ -697,7 +703,7 @@ export default function PrayerWallScreen() {
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.1,
+              shadowOpacity: 0.08,
               shadowRadius: 12,
               elevation: 5,
             }}

@@ -2,6 +2,7 @@ import { ArrowLeft, Bookmark, Eye, Heart, MessageCircle, Send, Share2 } from "lu
 import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
     FlatList,
     Image,
@@ -14,7 +15,7 @@ import {
     StatusBar,
     Text,
     TextInput,
-    View,
+    View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
@@ -162,6 +163,7 @@ export default function ReelsViewer({
             setComments(formattedComments);
         } catch (error) {
             console.error("Error fetching comments:", error);
+            Alert.alert("Error", "Could not load comments.");
         } finally {
             setLoadingComments(false);
         }
@@ -215,7 +217,7 @@ export default function ReelsViewer({
 
         } catch (error) {
             console.error("Error adding comment:", error);
-            alert("Failed to add comment. Please try again.");
+            Alert.alert("Error", "Failed to add comment. Please try again.");
         } finally {
             setSendingComment(false);
         }
@@ -234,6 +236,7 @@ export default function ReelsViewer({
             }
         } catch (error) {
             console.error("Error sharing:", error.message);
+            Alert.alert("Error", "Could not share verse.");
         }
     };
 
@@ -466,9 +469,9 @@ export default function ReelsViewer({
                 >
                     <KeyboardAvoidingView
                         behavior={Platform.OS === "ios" ? "padding" : "height"}
-                        className="flex-1 bg-black/50 justify-end"
+                        className="flex-1 bg-black/60 justify-end"
                     >
-                        <View className="bg-white rounded-t-[32px] h-[70%]">
+                        <View className="bg-white rounded-t-[32px] h-[70%] overflow-hidden shadow-2xl">
                             {/* Modal Header */}
                             <View className="px-6 py-4 border-b border-gray-100 flex-row justify-between items-center">
                                 <Text className="text-lg font-lexend-bold text-gray-900">Comments</Text>

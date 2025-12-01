@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   ImageBackground,
@@ -190,7 +191,7 @@ const DetailsModal = ({ visible, item, onClose, type }) => {
 
 
 export default function StatsScreen() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [celebrationQueue, setCelebrationQueue] = useState([]);
   const [currentCelebration, setCurrentCelebration] = useState(null);
@@ -202,9 +203,18 @@ export default function StatsScreen() {
   const [allBadges, setAllBadges] = useState([]); // Store all badges with earned status
   const [selectedTab, setSelectedTab] = useState("overview"); // overview, quests, badges
 
+  // Handle initial auth loading state
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log("Auth finished but no user. Stopping loading.");
+      setLoading(false);
+    }
+  }, [authLoading, user]);
+
   // Fetch data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      console.log("StatsScreen focused. User:", user?.id, "AuthLoading:", authLoading);
       if (user?.id) {
         fetchAllData();
       }
@@ -212,12 +222,14 @@ export default function StatsScreen() {
   );
 
   const fetchAllData = async () => {
+    console.log("fetchAllData started");
     try {
       const [userStats, questsData, badgesData] = await Promise.all([
         fetchUserStats(),
         fetchQuests(),
         fetchBadges(),
       ]);
+      console.log("fetchAllData promises resolved");
 
       // Check for new achievements (completed within last 5 minutes)
       const now = new Date();
@@ -266,8 +278,14 @@ export default function StatsScreen() {
       if (newCelebrations.length > 0) {
         setCelebrationQueue((prev) => [...prev, ...newCelebrations]);
       }
+      if (!userStats) {
+        // Only show alert if critical user stats failed
+        Alert.alert("Connection Issue", "Could not load your profile stats. Please pull to refresh.");
+      }
+
     } catch (error) {
       console.error("Error fetching data:", error);
+      Alert.alert("Error", "Something went wrong while loading your data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -835,12 +853,12 @@ function QuestCard({ quest, compact = false, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      className={`bg-white rounded-[24px] p-5 mb-3 border border-stone-200/40 active:scale-[0.98] transition-transform ${compact ? 'py-4' : ''}`}
+      className={`bg-white rounded-[24px] p-5 mb-3 border border-stone-200/60 active:scale-[0.98] transition-transform ${compact ? 'py-4' : ''}`}
       style={{
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
         elevation: 2,
       }}
     >
@@ -938,7 +956,7 @@ function BadgeCard({ badge, earnedAt, isLocked = false, onPress }) {
     return (
       <Pressable
         onPress={onPress}
-        className="bg-white rounded-[24px] p-4 border border-stone-100 active:scale-[0.98] transition-transform"
+        className="bg-white rounded-[24px] p-4 border border-stone-200/60 active:scale-[0.98] transition-transform"
         style={{
           width: (width - 60) / 2,
         }}
@@ -973,10 +991,10 @@ function BadgeCard({ badge, earnedAt, isLocked = false, onPress }) {
         width: (width - 60) / 2,
         height: 180,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 6,
       }}
     >
       <ImageBackground

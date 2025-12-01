@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   Text,
@@ -195,6 +196,7 @@ export default function TestimoniesScreen() {
       console.error("Error fetching testimonies:", error);
       // Set empty array on error to show empty state
       setTestimonies([]);
+      Alert.alert("Connection Issue", "Could not load testimonies.");
     } finally {
       setLoading(false);
     }
@@ -310,6 +312,7 @@ export default function TestimoniesScreen() {
       console.error("Error toggling reaction:", error);
       // Rollback to previous state on error
       setTestimonies(previousState);
+      Alert.alert("Error", "Could not update reaction.");
     }
   };
 
@@ -361,6 +364,10 @@ export default function TestimoniesScreen() {
           profiles:user_id (
             display_name,
             profile_photo_url
+          ),
+          prayer_requests:prayer_request_id (
+            title,
+            description
           )
         `,
         )
@@ -375,6 +382,7 @@ export default function TestimoniesScreen() {
         reactionCounts: { praise_count: 0, amen_count: 0, blessed_count: 0 },
         commentCount: 0,
         userReactions: new Set(),
+        linkedPrayer: data.prayer_requests,
       };
 
       setTestimonies((prev) => [newTestimonyData, ...prev]);
@@ -389,6 +397,7 @@ export default function TestimoniesScreen() {
     } catch (error) {
       console.error("Error adding testimony:", error);
       // Don't close modal on error so user can retry
+      Alert.alert("Error", "Failed to add testimony.");
     } finally {
       setSubmittingTestimony(false);
     }
@@ -435,6 +444,7 @@ export default function TestimoniesScreen() {
       console.error("Error fetching comments:", error);
       setFetchError("Failed to load comments. Please try again.");
       setComments([]);
+      Alert.alert("Error", "Could not load comments.");
     } finally {
       setLoadingComments(false);
     }
@@ -520,6 +530,7 @@ export default function TestimoniesScreen() {
         setCommentError("This comment was already posted.");
       } else {
         setCommentError("Failed to post comment. Please try again.");
+        Alert.alert("Error", "Failed to post comment.");
       }
     } finally {
       setSendingComment(false);
@@ -682,7 +693,7 @@ export default function TestimoniesScreen() {
                   style={{
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.06,
+                    shadowOpacity: 0.05,
                     shadowRadius: 8,
                     elevation: 2,
                   }}

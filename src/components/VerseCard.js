@@ -11,13 +11,14 @@ import {
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
   Share,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -118,6 +119,7 @@ export const VerseCard = ({
       console.error("Error fetching comments:", error);
       setFetchError("Failed to load comments. Please try again.");
       setComments([]);
+      Alert.alert("Error", "Could not load comments.");
     } finally {
       setLoadingComments(false);
     }
@@ -212,6 +214,7 @@ export const VerseCard = ({
         setCommentError("This comment was already posted.");
       } else {
         setCommentError("Failed to post comment. Please try again.");
+        Alert.alert("Error", "Failed to post comment.");
       }
     } finally {
       setSendingComment(false);
@@ -256,6 +259,7 @@ export const VerseCard = ({
       }
     } catch (error) {
       console.error("Error sharing:", error.message);
+      Alert.alert("Error", "Could not share verse.");
     }
   };
 
@@ -265,10 +269,10 @@ export const VerseCard = ({
         className="bg-white rounded-[28px] mb-0 overflow-hidden border border-stone-200/40"
         style={{
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 3,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.06,
+          shadowRadius: 16,
+          elevation: 4,
         }}
       >
         {/* Verse Header with Gradient */}
@@ -398,7 +402,7 @@ export const VerseCard = ({
         transparent={true}
         onRequestClose={() => setShowComments(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
+        <View className="flex-1 bg-black/60 justify-end">
           <View
             className="bg-white rounded-t-[32px] h-[80%]"
             style={{

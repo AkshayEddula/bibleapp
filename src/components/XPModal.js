@@ -74,8 +74,8 @@ export default function XPModal({ visible, onClose, stats }) {
                         transform: [{ translateY: slideAnim }],
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -4 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 12,
+                        shadowOpacity: 0.08,
+                        shadowRadius: 16,
                         elevation: 20,
                         paddingBottom: 40, // Safe area padding
                         overflow: "hidden",

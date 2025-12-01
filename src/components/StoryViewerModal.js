@@ -161,7 +161,7 @@ export default function StoryViewerModal({
                                 LumiVerse • {currentStory.tag || "Daily"}
                             </Text>
                         </View>
-                        <Pressable onPress={onClose} className="p-2 bg-white/50 rounded-full z-10">
+                        <Pressable onPress={onClose} className="p-2 bg-white/50 rounded-full z-10 shadow-sm">
                             <X size={24} color="#1f2937" pointerEvents="none" />
                         </Pressable>
                     </View>

@@ -55,7 +55,7 @@ const CelebrationModal = ({ visible, items = [], onClose }) => {
                         transform: [{ scale: scaleAnim }],
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 20 },
-                        shadowOpacity: 0.25,
+                        shadowOpacity: 0.15,
                         shadowRadius: 30,
                         elevation: 20,
                     }}

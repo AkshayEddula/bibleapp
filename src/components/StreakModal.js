@@ -51,9 +51,9 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                         borderTopRightRadius: 32,
                         transform: [{ translateY: slideAnim }],
                         shadowColor: "#000",
-                        shadowOffset: { width: 0, height: -2 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 8,
+                        shadowOffset: { width: 0, height: -4 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 16,
                         elevation: 10,
                         paddingBottom: 40, // Safe area padding
                         overflow: "hidden",

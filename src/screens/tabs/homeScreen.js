@@ -5,6 +5,7 @@ import { Flame, Trophy } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Pressable,
@@ -209,6 +210,7 @@ export default function HomeScreen() {
     } catch (err) {
       setError(err.message);
       console.error("Error fetching verses:", err);
+      Alert.alert("Connection Issue", "Could not load verses. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -276,6 +278,7 @@ export default function HomeScreen() {
     } catch (err) {
       setError(err.message);
       console.error("Error initializing data:", err);
+      Alert.alert("Error", "Could not load your feed.");
     } finally {
       setLoading(false);
     }
@@ -384,6 +387,7 @@ export default function HomeScreen() {
 
     } catch (error) {
       console.error("Error fetching streak data:", error);
+      // Silent fail for streak data is okay, but maybe log it
     }
   };
 
@@ -444,6 +448,7 @@ export default function HomeScreen() {
       }));
 
       setError(`Failed to update ${type}. Please try again.`);
+      Alert.alert("Error", `Could not ${type} verse.`);
       setTimeout(() => setError(null), 3000);
     }
   };
@@ -485,6 +490,7 @@ export default function HomeScreen() {
           share_count: (prev[verseId]?.share_count || 0) - 1,
         },
       }));
+      Alert.alert("Error", "Could not share verse.");
     }
   };
 
@@ -554,6 +560,7 @@ export default function HomeScreen() {
       setStoryViewerVisible(true);
     } catch (err) {
       console.error("Error fetching story verses:", err);
+      Alert.alert("Error", "Could not load story.");
     } finally {
       setLoadingStoryTag(null);
     }
@@ -569,7 +576,7 @@ export default function HomeScreen() {
           </Text>
           <View className="flex-row items-center gap-3">
             <Pressable
-              className="active:opacity-60 flex-row items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100"
+              className="active:opacity-60 flex-row items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100/50 shadow-sm"
               onPress={() => {
                 fetchStreakData();
                 setXpModalVisible(true);
@@ -582,7 +589,7 @@ export default function HomeScreen() {
             </Pressable>
 
             <Pressable
-              className="active:opacity-60 flex-row items-center gap-1 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100"
+              className="active:opacity-60 flex-row items-center gap-1 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100/50 shadow-sm"
               onPress={() => {
                 fetchStreakData(); // Refresh data before showing
                 setStreakModalVisible(true);
@@ -662,7 +669,7 @@ export default function HomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
+            contentContainerStyle={{ paddingHorizontal: 24, gap: 8, paddingVertical: 4 }}
           >
             {FILTERS.map((filter) => (
               <Pressable
@@ -676,8 +683,8 @@ export default function HomeScreen() {
                   }
                 }}
                 className={`px-4 py-2 rounded-full border ${activeFilter === filter
-                  ? "bg-gray-900 border-gray-900"
-                  : "bg-white border-gray-200"
+                  ? "bg-gray-900 border-gray-900 shadow-sm"
+                  : "bg-white border-gray-200/60 shadow-sm"
                   }`}
               >
                 <Text
@@ -705,7 +712,7 @@ export default function HomeScreen() {
       )}
 
       {error && (
-        <View className="bg-red-50 p-4 rounded-2xl mb-4 border border-red-200 mx-5">
+        <View className="bg-red-50 p-4 rounded-2xl mb-4 border border-red-100 mx-5 shadow-sm">
           <Text className="text-red-600 text-center font-lexend-light">
             {error}
           </Text>
@@ -796,7 +803,7 @@ export default function HomeScreen() {
     return (
       <View className={marginClass}>
         <VerseCard
-          key={`${item.id}-${counts.view_count}`} // Force re-render when view count changes
+          key={item.id}
           verse={item}
           isLiked={likedVerses.has(item.id)}
           isSaved={savedVerses.has(item.id)}

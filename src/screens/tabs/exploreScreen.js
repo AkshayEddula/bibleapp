@@ -3,6 +3,7 @@ import { ArrowRight, Bookmark, BookOpen, Heart, MessageCircle, Play, Search, Sha
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   ImageBackground,
@@ -160,6 +161,7 @@ export default function ExploreScreen() {
 
     } catch (error) {
       console.error("Error fetching explore data:", error);
+      Alert.alert("Connection Issue", "Could not load explore content. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -189,6 +191,7 @@ export default function ExploreScreen() {
       setSearchResults(versesData || []);
     } catch (error) {
       console.error("Error searching:", error);
+      Alert.alert("Search Error", "Something went wrong while searching.");
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -224,6 +227,7 @@ export default function ExploreScreen() {
         });
       } catch (error) {
         console.error("Error sharing:", error);
+        Alert.alert("Error", "Could not share verse.");
       }
       return;
     }
@@ -280,8 +284,8 @@ export default function ExploreScreen() {
       }
     } catch (error) {
       console.error(`Error toggling ${type}: `, error);
-      // Revert
       setState(currentState);
+      Alert.alert("Error", `Could not ${type} verse.`);
     }
   };
 
@@ -333,6 +337,7 @@ export default function ExploreScreen() {
       setRandomChapters(uniqueChapters);
     } catch (error) {
       console.error("Error fetching chapters:", error);
+      Alert.alert("Error", "Could not load chapters.");
     }
   };
 
@@ -382,7 +387,7 @@ export default function ExploreScreen() {
       setInitialReelsIndex(0);
     } catch (error) {
       console.error("Error fetching chapter verses:", error);
-      // Keep visible but stop loading (will show empty state if verses is empty)
+      Alert.alert("Error", "Could not open chapter.");
     } finally {
       setReelsLoading(false); // Stop loading
     }
@@ -464,6 +469,7 @@ export default function ExploreScreen() {
       }
     } catch (error) {
       console.error("Error fetching book verses:", error);
+      Alert.alert("Error", "Could not load book.");
     } finally {
       setReelsLoading(false); // Always stop loading, whether we found verses or not
     }
@@ -472,75 +478,84 @@ export default function ExploreScreen() {
   const renderTrendingCard = (title, count, icon, colors, data) => (
     <Pressable
       onPress={() => handleOpenReels(data, 0)}
-      className="rounded-[24px] mb-4 overflow-hidden bg-white"
       style={{
         width: COLUMN_WIDTH,
         height: COLUMN_WIDTH * 1.3,
+        marginBottom: 16,
+        // Shadow on the container
         shadowColor: colors[0],
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-        elevation: 8
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 6,
       }}
     >
-      <LinearGradient
-        colors={colors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
+        className="flex-1 rounded-[24px] overflow-hidden bg-white"
         style={{
-          flex: 1,
-          width: '100%',
-          height: '100%',
-          padding: 20,
-          justifyContent: 'space-between'
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.6)',
         }}
       >
-        {/* Top Section */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: 'rgba(255,255,255,0.25)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.15)'
-          }}>
-            {icon}
+        <LinearGradient
+          colors={colors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            flex: 1,
+            width: '100%',
+            height: '100%',
+            padding: 20,
+            justifyContent: 'space-between'
+          }}
+        >
+          {/* Top Section */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(255,255,255,0.25)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.15)'
+            }}>
+              {icon}
+            </View>
+            <View style={{
+              backgroundColor: 'rgba(255,255,255,0.25)',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.15)'
+            }}>
+              <Text className="text-white text-[10px] font-lexend-bold tracking-wide">TOP 10</Text>
+            </View>
           </View>
-          <View style={{
-            backgroundColor: 'rgba(255,255,255,0.25)',
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.15)'
-          }}>
-            <Text className="text-white text-[10px] font-lexend-bold tracking-wide">TOP 10</Text>
-          </View>
-        </View>
 
-        {/* Bottom Section with Lumi */}
-        <View className="flex-row items-end justify-between">
-          <View style={{ flex: 0.8, marginRight: 8, zIndex: 10 }}>
-            <Text className="text-white/95 font-lexend-semibold text-xs uppercase tracking-wider mb-1">{title}</Text>
-            <Text className="text-white font-lexend-bold text-3xl">{count}</Text>
+          {/* Bottom Section with Lumi */}
+          <View className="flex-row items-end justify-between">
+            <View style={{ flex: 0.8, marginRight: 8, zIndex: 10 }}>
+              <Text className="text-white/95 font-lexend-semibold text-xs uppercase tracking-wider mb-1">{title}</Text>
+              <Text className="text-white font-lexend-bold text-3xl">{count}</Text>
+            </View>
+            <Image
+              source={images.Char}
+              style={{
+                width: 72,
+                height: 72,
+                position: 'absolute',
+                right: -16,
+                bottom: -16,
+                opacity: 0.95
+              }}
+              resizeMode="contain"
+            />
           </View>
-          <Image
-            source={images.Char}
-            style={{
-              width: 72,
-              height: 72,
-              position: 'absolute',
-              right: -16,
-              bottom: -16,
-              opacity: 0.95
-            }}
-            resizeMode="contain"
-          />
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
     </Pressable>
   );
 
@@ -557,7 +572,7 @@ export default function ExploreScreen() {
           <View className="px-6 py-4 mb-2">
             <Text className="text-3xl font-lexend-medium text-gray-900 mb-4">Explore</Text>
 
-            <View className="flex-row items-center bg-white border border-gray-100 rounded-[18px] px-5 py-5">
+            <View className="flex-row items-center bg-white border border-gray-200/60 rounded-[18px] px-5 py-5 shadow-sm">
               <Search size={20} color="#9ca3af" />
               <TextInput
                 placeholder="Search verses, topics, or books..."
@@ -615,31 +630,39 @@ export default function ExploreScreen() {
                       <Pressable
                         key={verse.id}
                         onPress={() => handleOpenReels(searchResults, index)}
-                        className="rounded-2xl mb-3 overflow-hidden bg-white"
                         style={{
                           width: COLUMN_WIDTH,
                           height: 100,
+                          marginBottom: 12,
                           shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.08,
-                          shadowRadius: 6,
-                          elevation: 2
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 8,
+                          elevation: 2,
                         }}
                       >
-                        <View className="flex-1 p-4 justify-between">
-                          <View>
-                            <Text className="text-gray-900 font-lexend-bold text-base mb-1">
-                              {verse.book}
-                            </Text>
-                            <Text className="text-gray-500 font-lexend-medium text-xs">
-                              Chapter {verse.chapter}:{verse.verse}
-                            </Text>
-                          </View>
-                          <View className="flex-row items-center justify-between">
-                            <Text className="text-gray-400 font-lexend-light text-xs flex-1" numberOfLines={1}>
-                              {verse.content.substring(0, 30)}...
-                            </Text>
-                            <ArrowRight size={14} color="#9ca3af" />
+                        <View
+                          className="flex-1 rounded-2xl overflow-hidden bg-white"
+                          style={{
+                            borderWidth: 1,
+                            borderColor: '#f3f4f6'
+                          }}
+                        >
+                          <View className="flex-1 p-4 justify-between">
+                            <View>
+                              <Text className="text-gray-900 font-lexend-bold text-base mb-1">
+                                {verse.book}
+                              </Text>
+                              <Text className="text-gray-500 font-lexend-medium text-xs">
+                                Chapter {verse.chapter}:{verse.verse}
+                              </Text>
+                            </View>
+                            <View className="flex-row items-center justify-between">
+                              <Text className="text-gray-400 font-lexend-light text-xs flex-1" numberOfLines={1}>
+                                {verse.content.substring(0, 30)}...
+                              </Text>
+                              <ArrowRight size={14} color="#9ca3af" />
+                            </View>
                           </View>
                         </View>
                       </Pressable>
@@ -704,79 +727,87 @@ export default function ExploreScreen() {
                       <Pressable
                         key={book}
                         onPress={() => handleBookPress(book)}
-                        className="rounded-3xl mb-4 overflow-hidden"
                         style={{
                           width: COLUMN_WIDTH,
                           height: 140,
+                          marginBottom: 16,
                           shadowColor: colorSet.accent,
                           shadowOffset: { width: 0, height: 6 },
-                          shadowOpacity: 0.2,
+                          shadowOpacity: 0.15,
                           shadowRadius: 12,
-                          elevation: 4
+                          elevation: 4,
                         }}
                       >
-                        <LinearGradient
-                          colors={colorSet.gradient}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
+                        <View
+                          className="flex-1 rounded-3xl overflow-hidden"
                           style={{
-                            flex: 1,
-                            padding: 16,
-                            justifyContent: 'space-between'
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.6)',
                           }}
                         >
-                          {/* Decorative circles in background */}
-                          <View style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.4)' }} />
-                          <View style={{ position: 'absolute', bottom: -10, left: -10, width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                          <LinearGradient
+                            colors={colorSet.gradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{
+                              flex: 1,
+                              padding: 16,
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            {/* Decorative circles in background */}
+                            <View style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.4)' }} />
+                            <View style={{ position: 'absolute', bottom: -10, left: -10, width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.3)' }} />
 
-                          {/* Top section with icon and badge */}
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10 }}>
-                            <View style={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: 14,
-                              backgroundColor: 'rgba(255,255,255,0.95)',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              shadowColor: '#000',
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.1,
-                              shadowRadius: 4,
-                              elevation: 2
-                            }}>
-                              <Text style={{ fontSize: 24 }}>{colorSet.icon}</Text>
-                            </View>
-
-                            {/* Chapter count badge */}
-                            <View style={{
-                              backgroundColor: 'rgba(255,255,255,0.6)',
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 12,
-                              borderWidth: 1,
-                              borderColor: 'rgba(255,255,255,0.8)'
-                            }}>
-                              <Text className="text-gray-700 text-[10px] font-lexend-bold">NEW</Text>
-                            </View>
-                          </View>
-
-                          {/* Bottom section with book name */}
-                          <View style={{ zIndex: 10 }}>
-                            <Text className="text-gray-800 font-lexend-bold text-[16px] leading-5 mb-1" numberOfLines={2}>
-                              {book}
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                            {/* Top section with icon and badge */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10 }}>
                               <View style={{
-                                width: 20,
-                                height: 2,
-                                backgroundColor: 'rgba(0,0,0,0.2)',
-                                borderRadius: 1,
-                                marginRight: 6
-                              }} />
-                              <Text className="text-gray-600 text-[11px] font-lexend-medium">Testament</Text>
+                                width: 48,
+                                height: 48,
+                                borderRadius: 14,
+                                backgroundColor: 'rgba(255,255,255,0.95)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.05,
+                                shadowRadius: 4,
+                                elevation: 2
+                              }}>
+                                <Text style={{ fontSize: 24 }}>{colorSet.icon}</Text>
+                              </View>
+
+                              {/* Chapter count badge */}
+                              <View style={{
+                                backgroundColor: 'rgba(255,255,255,0.6)',
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.8)'
+                              }}>
+                                <Text className="text-gray-700 text-[10px] font-lexend-bold">NEW</Text>
+                              </View>
                             </View>
-                          </View>
-                        </LinearGradient>
+
+                            {/* Bottom section with book name */}
+                            <View style={{ zIndex: 10 }}>
+                              <Text className="text-gray-800 font-lexend-bold text-[16px] leading-5 mb-1" numberOfLines={2}>
+                                {book}
+                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                <View style={{
+                                  width: 20,
+                                  height: 2,
+                                  backgroundColor: 'rgba(0,0,0,0.2)',
+                                  borderRadius: 1,
+                                  marginRight: 6
+                                }} />
+                                <Text className="text-gray-600 text-[11px] font-lexend-medium">Testament</Text>
+                              </View>
+                            </View>
+                          </LinearGradient>
+                        </View>
                       </Pressable>
                     );
                   })}
@@ -800,97 +831,106 @@ export default function ExploreScreen() {
                       <Pressable
                         key={`${chapter.book} -${chapter.chapter} `}
                         onPress={() => handleChapterPress(chapter)}
+                        className="rounded-[24px]"
                         style={{
                           width: COLUMN_WIDTH,
                           height: COLUMN_WIDTH * 1.5,
+                          marginBottom: 16,
                           shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 8 },
-                          shadowOpacity: 0.25,
+                          shadowOffset: { width: 0, height: 6 },
+                          shadowOpacity: 0.15,
                           shadowRadius: 12,
-                          elevation: 6
+                          elevation: 4,
                         }}
-                        className="mb-4 rounded-[24px] overflow-hidden bg-gray-900"
                       >
-                        <ImageBackground
-                          source={images.J1}
-                          className="flex-1"
-                          resizeMode="cover"
-                          blurRadius={10}
+                        <View
+                          className="flex-1 overflow-hidden bg-gray-900 rounded-[24px]"
+
                         >
-                          <LinearGradient
-                            colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.75)']}
+                          <ImageBackground
+                            source={images.J1}
+                            className="flex-1"
+                            resizeMode="cover"
+                            blurRadius={10}
                             style={{
-                              flex: 1,
-                              width: '100%',
-                              height: '100%',
-                              padding: 18,
-                              justifyContent: 'space-between'
+                              borderRadius: 24
                             }}
                           >
-                            {/* Top Badge Section */}
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <View style={{
-                                backgroundColor: 'rgba(255,255,255,0.3)',
-                                paddingHorizontal: 14,
-                                paddingVertical: 7,
-                                borderRadius: 20,
-                                borderWidth: 1.5,
-                                borderColor: 'rgba(255,255,255,0.2)'
-                              }}>
-                                <Text className="text-white text-[12px] font-lexend-bold uppercase tracking-wider">
-                                  Ch. {chapter.chapter}
-                                </Text>
-                              </View>
-                              <View style={{
-                                backgroundColor: 'rgba(255,255,255,0.3)',
-                                padding: 10,
-                                borderRadius: 20,
-                                borderWidth: 1.5,
-                                borderColor: 'rgba(255,255,255,0.2)'
-                              }}>
-                                <Play size={16} color="white" fill="white" />
-                              </View>
-                            </View>
-
-                            {/* Bottom Content Section */}
-                            <View>
-                              {/* Book Name - Single Line */}
-                              <Text
-                                className="text-white font-lexend-bold text-[18px] leading-5 mb-2"
-                                numberOfLines={1}
-                                adjustsFontSizeToFit
-                                minimumFontScale={0.7}
-                              >
-                                {chapter.book}
-                              </Text>
-
-                              {/* Subtitle with Lumi */}
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                  <View style={{
-                                    width: 20,
-                                    height: 2.5,
-                                    backgroundColor: 'rgba(255,255,255,0.6)',
-                                    borderRadius: 2,
-                                    marginRight: 6
-                                  }} />
-                                  <Text className="text-white/90 text-[12px] font-lexend-semibold">
-                                    Read Now
+                            <LinearGradient
+                              colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.75)']}
+                              style={{
+                                flex: 1,
+                                width: '100%',
+                                height: '100%',
+                                padding: 18,
+                                justifyContent: 'space-between'
+                              }}
+                            >
+                              {/* Top Badge Section */}
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <View style={{
+                                  backgroundColor: 'rgba(255,255,255,0.3)',
+                                  paddingHorizontal: 14,
+                                  paddingVertical: 7,
+                                  borderRadius: 20,
+                                  borderWidth: 1.5,
+                                  borderColor: 'rgba(255,255,255,0.2)'
+                                }}>
+                                  <Text className="text-white text-[12px] font-lexend-bold uppercase tracking-wider">
+                                    Ch. {chapter.chapter}
                                   </Text>
                                 </View>
-
-                                {/* Lumi Mascot */}
-                                <View style={{ marginRight: -8 }}>
-                                  <Image
-                                    source={images.Char}
-                                    style={{ width: 64, height: 64 }}
-                                    resizeMode="contain"
-                                  />
+                                <View style={{
+                                  backgroundColor: 'rgba(255,255,255,0.3)',
+                                  padding: 10,
+                                  borderRadius: 20,
+                                  borderWidth: 1.5,
+                                  borderColor: 'rgba(255,255,255,0.2)'
+                                }}>
+                                  <Play size={16} color="white" fill="white" />
                                 </View>
                               </View>
-                            </View>
-                          </LinearGradient>
-                        </ImageBackground>
+
+                              {/* Bottom Content Section */}
+                              <View>
+                                {/* Book Name - Single Line */}
+                                <Text
+                                  className="text-white font-lexend-bold text-[18px] leading-5 mb-2"
+                                  numberOfLines={1}
+                                  adjustsFontSizeToFit
+                                  minimumFontScale={0.7}
+                                >
+                                  {chapter.book}
+                                </Text>
+
+                                {/* Subtitle with Lumi */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{
+                                      width: 20,
+                                      height: 2.5,
+                                      backgroundColor: 'rgba(255,255,255,0.6)',
+                                      borderRadius: 2,
+                                      marginRight: 6
+                                    }} />
+                                    <Text className="text-white/90 text-[12px] font-lexend-semibold">
+                                      Read Now
+                                    </Text>
+                                  </View>
+
+                                  {/* Lumi Mascot */}
+                                  <View style={{ marginRight: -8 }}>
+                                    <Image
+                                      source={images.Char}
+                                      style={{ width: 64, height: 64 }}
+                                      resizeMode="contain"
+                                    />
+                                  </View>
+                                </View>
+                              </View>
+                            </LinearGradient>
+                          </ImageBackground>
+                        </View>
                       </Pressable>
                     ))}
                   </View>

@@ -40,10 +40,10 @@ export function StoryCircle({ tag, color, icon, hasNew, onPress, isLoading }) {
             borderRadius: 35,
             padding: 3,
             shadowColor: hasNew ? color[1] : "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: hasNew ? 0.3 : 0.1,
-            shadowRadius: 4,
-            elevation: 3,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: hasNew ? 0.25 : 0.05,
+            shadowRadius: 8,
+            elevation: 4,
           }}
         >
           <View className="w-full h-full bg-white rounded-full items-center justify-center">
