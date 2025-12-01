@@ -314,12 +314,15 @@ export default function ProfileScreen() {
           height: CARD_SIZE,
           margin: 4,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
           elevation: 3,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: 'rgba(0,0,0,0.03)',
         }}
-        className="rounded-2xl overflow-hidden"
+        className="overflow-hidden bg-white"
       >
         <Image
           source={images.J1}
@@ -420,15 +423,17 @@ export default function ProfileScreen() {
         onPress={() => handlePostPress(item)}
         style={{
           width: POST_CARD_SIZE,
-          height: POST_CARD_SIZE * 1.3, // Slightly taller for better proportions
+          height: POST_CARD_SIZE * 1.3,
           margin: 6,
           shadowColor: isTestimonial ? '#f59e0b' : '#8b5cf6',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
           elevation: 4,
+          borderWidth: 1,
+          borderColor: 'rgba(0,0,0,0.03)',
         }}
-        className="rounded-[24px] overflow-hidden bg-white"
+        className="rounded-[28px] overflow-hidden bg-white"
       >
         <LinearGradient
           colors={gradientColors}
@@ -613,17 +618,17 @@ export default function ProfileScreen() {
             {/* User Info Card */}
             <View
               style={{
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                borderRadius: 20,
-                paddingVertical: 20,
+                backgroundColor: 'rgba(255,255,255,0.95)',
+                borderRadius: 24,
+                paddingVertical: 24,
                 paddingHorizontal: 24,
                 shadowColor: '#f59e0b',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.08,
+                shadowRadius: 24,
                 elevation: 3,
                 borderWidth: 1,
-                borderColor: 'rgba(251, 191, 36, 0.2)',
+                borderColor: 'rgba(251, 191, 36, 0.15)',
               }}
             >
               <View className="items-center">
@@ -649,11 +654,11 @@ export default function ProfileScreen() {
               onPress={() => setActiveTab("posts")}
               className="flex-1"
               style={{
-                shadowColor: activeTab === "posts" ? '#f59e0b' : '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: activeTab === "posts" ? 0.25 : 0.08,
-                shadowRadius: 12,
-                elevation: activeTab === "posts" ? 6 : 2,
+                shadowColor: activeTab === "posts" ? '#f59e0b' : '#94a3b8',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: activeTab === "posts" ? 0.2 : 0.05,
+                shadowRadius: 16,
+                elevation: activeTab === "posts" ? 6 : 1,
               }}
             >
               <LinearGradient
@@ -661,11 +666,11 @@ export default function ProfileScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  borderRadius: 20,
+                  borderRadius: 24,
                   paddingVertical: 20,
                   paddingHorizontal: 16,
                   borderWidth: activeTab === "posts" ? 0 : 1,
-                  borderColor: '#f3f4f6',
+                  borderColor: '#f1f5f9',
                 }}
               >
                 <View className="items-center">
@@ -697,11 +702,11 @@ export default function ProfileScreen() {
               onPress={() => setActiveTab("liked")}
               className="flex-1"
               style={{
-                shadowColor: activeTab === "liked" ? '#8b5cf6' : '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: activeTab === "liked" ? 0.25 : 0.08,
-                shadowRadius: 12,
-                elevation: activeTab === "liked" ? 6 : 2,
+                shadowColor: activeTab === "liked" ? '#8b5cf6' : '#94a3b8',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: activeTab === "liked" ? 0.2 : 0.05,
+                shadowRadius: 16,
+                elevation: activeTab === "liked" ? 6 : 1,
               }}
             >
               <LinearGradient
@@ -709,11 +714,11 @@ export default function ProfileScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  borderRadius: 20,
+                  borderRadius: 24,
                   paddingVertical: 20,
                   paddingHorizontal: 16,
                   borderWidth: activeTab === "liked" ? 0 : 1,
-                  borderColor: '#f3f4f6',
+                  borderColor: '#f1f5f9',
                 }}
               >
                 <View className="items-center">
@@ -745,11 +750,11 @@ export default function ProfileScreen() {
               onPress={() => setActiveTab("saved")}
               className="flex-1"
               style={{
-                shadowColor: activeTab === "saved" ? '#3b82f6' : '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: activeTab === "saved" ? 0.25 : 0.08,
-                shadowRadius: 12,
-                elevation: activeTab === "saved" ? 6 : 2,
+                shadowColor: activeTab === "saved" ? '#3b82f6' : '#94a3b8',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: activeTab === "saved" ? 0.2 : 0.05,
+                shadowRadius: 16,
+                elevation: activeTab === "saved" ? 6 : 1,
               }}
             >
               <LinearGradient
@@ -757,11 +762,11 @@ export default function ProfileScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  borderRadius: 20,
+                  borderRadius: 24,
                   paddingVertical: 20,
                   paddingHorizontal: 16,
                   borderWidth: activeTab === "saved" ? 0 : 1,
-                  borderColor: '#f3f4f6',
+                  borderColor: '#f1f5f9',
                 }}
               >
                 <View className="items-center">
@@ -770,7 +775,7 @@ export default function ProfileScreen() {
                     style={{
                       color: activeTab === "saved" ? '#ffffff' : '#1f2937',
                       fontSize: 24,
-                      letterSpacing: -0.4
+                      letterSpacing: -1.5
                     }}
                   >
                     {stats.savedCount}

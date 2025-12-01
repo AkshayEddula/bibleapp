@@ -296,40 +296,41 @@ export default function StatsScreen() {
   };
 
   const fetchQuests = async () => {
-    const { data: questsData, error: questsError } = await supabase
-      .from("quests")
-      .select("*")
-      .eq("is_active", true);
+    try {
+      console.log("Fetching quests for user:", user.id);
 
-    if (questsError) {
-      console.error("Error fetching quests:", questsError);
+      const { data, error } = await supabase.rpc('get_user_quests', {
+        p_user_id: user.id
+      });
+
+      if (error) {
+        console.error("Error fetching quests:", error.message, error.details);
+        setActiveQuests([]); // Set empty array on error
+        return [];
+      }
+
+      console.log("Quests fetched successfully:", data?.length || 0);
+
+      if (!data || data.length === 0) {
+        setActiveQuests([]);
+        return [];
+      }
+
+      // Deduplicate
+      const uniqueQuests = Object.values(
+        data.reduce((acc, curr) => {
+          if (!acc[curr.id]) acc[curr.id] = curr;
+          return acc;
+        }, {})
+      );
+
+      setActiveQuests(uniqueQuests);
+      return uniqueQuests;
+    } catch (err) {
+      console.error("Caught error in fetchQuests:", err.message, err.stack);
+      setActiveQuests([]); // Prevent undefined state
       return [];
     }
-
-    const { data: userQuestsData, error: userQuestsError } = await supabase
-      .from("user_quests")
-      .select("*")
-      .eq("user_id", user.id);
-
-    if (userQuestsError) {
-      console.error("Error fetching user quests:", userQuestsError);
-      return [];
-    }
-
-    // Merge data
-    const mergedQuests = questsData.map(quest => {
-      const userQuest = userQuestsData?.find(uq => uq.quest_id === quest.id);
-      return {
-        ...quest,
-        progress: userQuest?.progress_count || 0,
-        is_completed: userQuest?.is_completed || false,
-        user_quest_id: userQuest?.id,
-        completed_at: userQuest?.completed_at // Add completed_at for celebration check
-      };
-    });
-
-    setActiveQuests(mergedQuests);
-    return mergedQuests;
   };
 
   const fetchBadges = async () => {
@@ -395,8 +396,9 @@ export default function StatsScreen() {
   // Handle Celebration Queue
   useEffect(() => {
     if (!currentCelebration && celebrationQueue.length > 0) {
-      setCurrentCelebration(celebrationQueue[0]);
-      setCelebrationQueue((prev) => prev.slice(1));
+      // Batch all pending celebrations
+      setCurrentCelebration(celebrationQueue);
+      setCelebrationQueue([]);
     }
   }, [currentCelebration, celebrationQueue]);
 
@@ -810,8 +812,7 @@ export default function StatsScreen() {
       {/* Celebration Modal */}
       <CelebrationModal
         visible={!!currentCelebration}
-        item={currentCelebration?.item}
-        type={currentCelebration?.type}
+        items={currentCelebration || []}
         onClose={closeCelebration}
       />
 
