@@ -1,31 +1,30 @@
-import React, { useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Text,
-  Pressable,
-  Alert,
-  ActivityIndicator,
-  View,
-  Image,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { useAuth } from "../../context/AuthContext";
-import { LinearGradient } from "expo-linear-gradient";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { Sparkles, Heart, Shield, BookOpen } from "lucide-react-native";
 import {
   GoogleSignin,
   isSuccessResponse,
 } from "@react-native-google-signin/google-signin";
+import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Sparkles } from "lucide-react-native";
+import { useEffect } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withRepeat,
   Easing,
-  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming
 } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../context/AuthContext";
 import { images } from "../../utils";
 
 GoogleSignin.configure({
@@ -112,145 +111,134 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={["#fffaf4", "#fff9e6", "#fff4d4"]}
+      colors={["#FFFDF7", "#FFF9EB", "#FFF4D6"]}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      end={{ x: 0, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView className="flex-1 px-6">
-        <Animated.View
-          style={[
-            fadeStyle,
-            { flex: 1, justifyContent: "center", alignItems: "center" },
-          ]}
-        >
-          {/* Lumi Character */}
-          <Animated.View style={floatStyle} className="relative mb-8">
-            <Image
-              source={lumi}
-              className="w-[260px] h-[260px]"
-              resizeMode="contain"
-            />
-            <Animated.View
-              style={[
-                sparkleStyle,
-                { position: "absolute", top: 15, right: 25 },
-              ]}
-            >
-              <Sparkles size={32} color="#F9C846" fill="#FEE8A0" />
-            </Animated.View>
-            <Animated.View
-              style={[
-                sparkleStyle,
-                { position: "absolute", bottom: 40, left: 20 },
-              ]}
-            >
-              <Sparkles size={24} color="#F9C846" fill="#FEE8A0" />
-            </Animated.View>
-          </Animated.View>
+      <SafeAreaView className="flex-1">
+        <Animated.View style={[fadeStyle, { flex: 1 }]}>
 
-          {/* Text Section */}
-          <View className="items-center gap-3 px-8">
-            <Text className="text-[34px] font-lexend text-gray-800 text-center leading-tight">
-              Let’s Get Started
-            </Text>
-            <Text className="text-[15px] text-gray-600 text-center font-lexend-light leading-6">
-              Sign in or create your account to{"\n"}join our community of faith
-              & prayer.
+          {/* Top Section: Character + Sparkles */}
+          <View className="flex-1 justify-center items-center pt-12">
+            <Animated.View style={floatStyle} className="relative">
+              <Image
+                source={lumi}
+                className="w-[300px] h-[300px]"
+                resizeMode="contain"
+              />
+              <Animated.View
+                style={[sparkleStyle, { position: "absolute", top: 25, right: 35 }]}
+              >
+                <Sparkles size={34} color="#F59E0B" fill="#FCD34D" />
+              </Animated.View>
+              <Animated.View
+                style={[sparkleStyle, { position: "absolute", bottom: 55, left: 30 }]}
+              >
+                <Sparkles size={28} color="#F59E0B" fill="#FCD34D" />
+              </Animated.View>
+            </Animated.View>
+          </View>
+
+          {/* Bottom Section: Content */}
+          <View className="px-7 pb-10">
+
+            {/* Headline */}
+            <View className="items-center mb-10">
+              <Text className="text-[40px] font-lexend-bold text-gray-900 text-center leading-[46px] mb-3 tracking-tight">
+                Welcome to{"\n"}LumiVerse 📖
+              </Text>
+              <Text className="text-[15px] text-gray-600 text-center font-lexend-light leading-6 px-4">
+                Join thousands reading the Bible{"\n"}and praying together daily
+              </Text>
+            </View>
+
+            {/* Google Sign In Button - PRIMARY CTA */}
+            <Pressable
+              onPress={HandleSignin}
+              disabled={isLoading}
+              className="rounded-[28px] overflow-hidden mb-6"
+              style={({ pressed }) => [
+                {
+                  shadowColor: isLoading ? "#9CA3AF" : "#F59E0B",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: isLoading ? 0.2 : 0.3,
+                  shadowRadius: 16,
+                  elevation: 8,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={isLoading ? ["#E5E7EB", "#D1D5DB"] : ["#FDE68A", "#FCD34D", "#F59E0B"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingVertical: 20,
+                  gap: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: "rgba(255, 255, 255, 0.6)",
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <ActivityIndicator size="small" color="#6B7280" />
+                    <Text className="text-[17px] font-lexend-bold text-gray-700">
+                      Signing you in...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <View className="bg-white rounded-full p-1.5 shadow-sm">
+                      <AntDesign name="google" size={20} color="#4285F4" />
+                    </View>
+                    <Text className="text-[17px] font-lexend-bold text-amber-950">
+                      Continue with Google
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+
+            {/* Divider with text */}
+            <View className="flex-row items-center mb-7">
+              <View className="flex-1 h-[1px] bg-amber-200/40" />
+              <Text className="text-[12px] text-amber-700/60 font-lexend-medium px-4">
+                Trusted by 10,000+ believers
+              </Text>
+              <View className="flex-1 h-[1px] bg-amber-200/40" />
+            </View>
+
+            {/* Feature Pills - Compact */}
+            <View className="flex-row flex-wrap justify-center gap-2.5 mb-2">
+              <View className="bg-white/70 px-5 py-3 rounded-full border border-amber-100/80 shadow-sm">
+                <Text className="text-[13px] text-amber-900 font-lexend-semibold">
+                  📖 Daily Bible
+                </Text>
+              </View>
+              <View className="bg-white/70 px-5 py-3 rounded-full border border-amber-100/80 shadow-sm">
+                <Text className="text-[13px] text-amber-900 font-lexend-semibold">
+                  🙏 Prayer Circle
+                </Text>
+              </View>
+              <View className="bg-white/70 px-5 py-3 rounded-full border border-amber-100/80 shadow-sm">
+                <Text className="text-[13px] text-amber-900 font-lexend-semibold">
+                  🔥 Faith Streaks
+                </Text>
+              </View>
+            </View>
+
+            {/* Bottom Legal */}
+            <Text className="text-[10px] text-gray-400 font-lexend-light text-center mt-6 leading-4">
+              By continuing, you agree to our{"\n"}Terms of Service & Privacy Policy
             </Text>
           </View>
 
-          {/* Google Button */}
-          <Pressable
-            onPress={HandleSignin}
-            disabled={isLoading}
-            className="mt-10 rounded-[20px] overflow-hidden active:scale-95 w-[85%]"
-            style={{
-              shadowColor: "#F9C846",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.35,
-              shadowRadius: 10,
-              elevation: 8,
-            }}
-          >
-            <LinearGradient
-              colors={
-                isLoading
-                  ? ["#e4e4e7", "#a1a1aa", "#e4e4e7"]
-                  : ["#FEE8A0", "#F9C846", "#F6B73C"]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 20,
-                gap: 12,
-                borderWidth: 0.6,
-                borderColor: "rgba(255,255,255,0.6)",
-              }}
-            >
-              {isLoading ? (
-                <>
-                  <ActivityIndicator size="small" color="#3f3f46" />
-                  <Text className="text-[18px] font-lexend-medium text-gray-700">
-                    Connecting...
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <AntDesign name="google" size={22} color="#57534e" />
-                  <Text className="text-[18px] font-lexend-medium text-gray-800">
-                    Continue with Google
-                  </Text>
-                </>
-              )}
-            </LinearGradient>
-          </Pressable>
-
-          {/* Features List */}
-          <View className="w-full px-6 mt-10 gap-3">
-            <Feature
-              icon={<Heart size={18} color="#f59e0b" fill="#fbbf24" />}
-              text="Join a loving community of believers"
-            />
-            <Feature
-              icon={<Sparkles size={18} color="#f59e0b" fill="#fbbf24" />}
-              text="Share & receive heartfelt prayers"
-            />
-            <Feature
-              icon={<BookOpen size={18} color="#f59e0b" fill="#fbbf24" />}
-              text="Discover Bible Reels & Daily Verses"
-            />
-            <Feature
-              icon={<Shield size={18} color="#f59e0b" />}
-              text="Safe, secure & private space"
-            />
-          </View>
         </Animated.View>
-
-        {/* Bottom */}
-        <View className="pb-6 items-center gap-1">
-          <Text className="text-[12px] text-gray-400 font-lexend-light">
-            By continuing, you agree to our Terms & Privacy Policy
-          </Text>
-          <Text className="text-[13px] text-amber-600 font-lexend mt-1">
-            Spreading light, one prayer at a time ✨
-          </Text>
-        </View>
       </SafeAreaView>
     </LinearGradient>
-  );
-}
-
-function Feature({ icon, text }) {
-  return (
-    <View className="flex-row items-center gap-3 px-2">
-      <View className="bg-amber-100/60 p-2 rounded-full">{icon}</View>
-      <Text className="text-[14px] text-gray-600 font-lexend-light flex-1">
-        {text}
-      </Text>
-    </View>
   );
 }

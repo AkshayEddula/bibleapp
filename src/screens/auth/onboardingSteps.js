@@ -1,37 +1,39 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import {
+  BookOpen,
   Check,
   ChevronLeft,
-  Sparkles,
-  BookOpen,
-  Target,
+  Edit3,
   Heart,
+  Sparkles,
+  Target,
 } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
   Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from "react-native-reanimated";
-import { supabase } from "../../lib/supabase";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 export default function OnboardingSteps() {
   const [activeVersion, setActiveVersion] = useState(0);
-  const [target, setTarget] = useState("1");
-  const [selectCategories, setSelectCategories] = useState([0, 1, 2]);
+  const [target, setTarget] = useState("10");
+  const [selectCategories, setSelectCategories] = useState([]);
   const [step, setStep] = useState(0);
+  const [isCustomGoal, setIsCustomGoal] = useState(false);
+  const [customValue, setCustomValue] = useState("");
 
   const { profile, updateProfile } = useAuth();
 
@@ -42,11 +44,8 @@ export default function OnboardingSteps() {
   useEffect(() => {
     fadeIn.value = 0;
     slideIn.value = 30;
-    fadeIn.value = withTiming(1, { duration: 500 });
-    slideIn.value = withTiming(0, {
-      duration: 500,
-      easing: Easing.out(Easing.quad),
-    });
+    fadeIn.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.ease) });
+    slideIn.value = withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) });
   }, [step]);
 
   const contentStyle = useAnimatedStyle(() => ({
@@ -55,77 +54,30 @@ export default function OnboardingSteps() {
   }));
 
   const bibleVersions = [
-    "KJV",
-    "NKJV",
-    "NIV",
-    "NLT",
-    "ESV",
-    "NASB",
-    "RSV",
-    "NRSV",
-    "CSB",
-    "HCSB",
-    "AMP",
-    "GNT",
-    "CEV",
-    "MSG",
-    "TPT",
-    "NCV",
-    "NET",
-    "WEB",
-    "MEV",
-    "CEB",
-    "GW",
-    "YLT",
-    "ASV",
-    "NABRE",
-    "NJB",
-    "JB",
-    "Douay-Rheims",
-    "RVR1960",
-    "NVI",
-    "DHH",
-    "TLA",
-    "ERV-HI",
-    "HINOV",
-    "Telugu OV",
-    "Telugu BSI",
-    "Tamil OV",
-    "Tamil BSI",
-    "Malayalam OV",
-    "Malayalam BSI",
+    { name: "NIV", full: "New International Version", popular: true },
+    { name: "ESV", full: "English Standard Version", popular: true },
+    { name: "NLT", full: "New Living Translation", popular: true },
+    { name: "KJV", full: "King James Version", popular: false },
+    { name: "NKJV", full: "New King James Version", popular: false },
+    { name: "NASB", full: "New American Standard", popular: false },
+    { name: "MSG", full: "The Message", popular: false },
+    { name: "AMP", full: "Amplified Bible", popular: false },
+    { name: "CSB", full: "Christian Standard Bible", popular: false },
+    { name: "NET", full: "New English Translation", popular: false },
   ];
 
   const categories = [
-    "Faith",
-    "Hope",
-    "Love",
-    "Wisdom",
-    "Peace",
-    "Strength",
-    "Forgiveness",
-    "Prayer",
-    "Healing",
-    "Joy",
-    "Guidance",
-  ];
-
-  const onboardingQuestions = [
-    {
-      title: "Choose Your Bible Version",
-      subtitle: "Select the translation you prefer for daily verses",
-      icon: BookOpen,
-    },
-    {
-      title: "Set Your Daily Goal",
-      subtitle: "How many verses would you like to read each day?",
-      icon: Target,
-    },
-    {
-      title: "Pick Your Interests",
-      subtitle: "Select at least 3 categories that resonate with you",
-      icon: Heart,
-    },
+    { name: "Faith", emoji: "✨", color: "#FCD34D" },
+    { name: "Hope", emoji: "🌟", color: "#A7F3D0" },
+    { name: "Love", emoji: "❤️", color: "#FCA5A5" },
+    { name: "Wisdom", emoji: "🦉", color: "#C4B5FD" },
+    { name: "Peace", emoji: "🕊️", color: "#93C5FD" },
+    { name: "Strength", emoji: "💪", color: "#FDE047" },
+    { name: "Forgiveness", emoji: "🤝", color: "#FED7AA" },
+    { name: "Prayer", emoji: "🙏", color: "#DDD6FE" },
+    { name: "Healing", emoji: "💚", color: "#86EFAC" },
+    { name: "Joy", emoji: "😊", color: "#FEF08A" },
+    { name: "Guidance", emoji: "🧭", color: "#BAE6FD" },
   ];
 
   const toggleCategories = (index) => {
@@ -140,21 +92,21 @@ export default function OnboardingSteps() {
     if (currentStep === 2) {
       if (selectCategories.length < 3) {
         Alert.alert(
-          "Almost there!",
-          "Please select at least 3 categories to continue",
+          "Almost there! 🙏",
+          "Please select at least 3 topics to personalize your experience"
         );
         return;
       }
 
       const selectedCategoryNames = selectCategories.map(
-        (index) => categories[index],
+        (index) => categories[index].name,
       );
 
       try {
         const { error } = await supabase.from("user_preferences").upsert(
           {
             user_id: profile.id,
-            preferred_versions: [bibleVersions[activeVersion]],
+            preferred_versions: [bibleVersions[activeVersion].name],
             daily_verse_goal: parseInt(target),
             target_categories: selectedCategoryNames,
             onboarding_completed: true,
@@ -172,7 +124,7 @@ export default function OnboardingSteps() {
         await updateProfile({ is_onboarded: true });
         Alert.alert(
           "All Set! 🎉",
-          "Your preferences have been saved successfully!",
+          "Your personalized Bible journey begins now!",
         );
         return { success: true };
       } catch (error) {
@@ -183,8 +135,8 @@ export default function OnboardingSteps() {
     } else if (currentStep >= 0 && currentStep < 2) {
       if (currentStep === 1 && (!target || parseInt(target) < 1)) {
         Alert.alert(
-          "Hold on!",
-          "Please enter a valid daily goal (at least 1 verse)",
+          "Hold on! 📖",
+          "Please set a daily goal of at least 1 verse",
         );
         return;
       }
@@ -199,149 +151,270 @@ export default function OnboardingSteps() {
   };
 
   const renderContent = () => {
-    const IconComponent = onboardingQuestions[step].icon;
-
     switch (step) {
       case 0:
         return (
           <Animated.View style={contentStyle} className="flex-1">
             <ScrollView
-              className="flex-1 px-1"
+              className="flex-1"
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20 }}
+              contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 4 }}
             >
-              <View className="gap-3">
-                {bibleVersions.map((version, index) => (
-                  <Pressable
-                    onPress={() => setActiveVersion(index)}
-                    key={index}
-                    className="active:scale-[0.98]"
-                  >
-                    <LinearGradient
-                      colors={
-                        activeVersion === index
-                          ? ["#FEE8A0", "#F9C846"]
-                          : ["#fafafa", "#f5f5f5"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{
-                        paddingHorizontal: 24,
-                        paddingVertical: 16,
-                        borderRadius: 18,
-                        borderWidth: 1,
-                        borderColor:
-                          activeVersion === index ? "#FCD34D" : "#E5E7EB",
-                        shadowColor:
-                          activeVersion === index ? "#F9C846" : "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: activeVersion === index ? 0.2 : 0.05,
-                        shadowRadius: 4,
-                        elevation: activeVersion === index ? 4 : 1,
-                      }}
+              {/* Popular Versions Section */}
+              <Text className="text-[13px] text-amber-700 font-lexend-semibold mb-3 px-1">
+                📖 MOST POPULAR
+              </Text>
+              <View className="gap-3 mb-6">
+                {bibleVersions.filter(v => v.popular).map((version, index) => {
+                  const actualIndex = bibleVersions.indexOf(version);
+                  return (
+                    <Pressable
+                      onPress={() => setActiveVersion(actualIndex)}
+                      key={actualIndex}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                     >
-                      <View className="flex-row items-center justify-between">
-                        <Text
-                          className={`text-[18px] font-lexend-medium ${
-                            activeVersion === index
-                              ? "text-gray-800"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {version}
-                        </Text>
-                        {activeVersion === index && (
-                          <View className="bg-white rounded-full p-1">
-                            <Check size={18} color="#F9C846" strokeWidth={3} />
+                      <View
+                        style={{
+                          backgroundColor: activeVersion === actualIndex ? '#FFFBEB' : '#FFFFFF',
+                          paddingHorizontal: 20,
+                          paddingVertical: 18,
+                          borderRadius: 16,
+                          borderWidth: 1.5,
+                          borderColor: activeVersion === actualIndex ? '#F59E0B' : '#E5E7EB',
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.03,
+                          shadowRadius: 3,
+                          elevation: 1,
+                        }}
+                      >
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-1">
+                            <Text className="text-[18px] font-lexend-bold text-gray-900 mb-1">
+                              {version.name}
+                            </Text>
+                            <Text className="text-[13px] text-gray-500 font-lexend-light">
+                              {version.full}
+                            </Text>
                           </View>
-                        )}
+                          {activeVersion === actualIndex && (
+                            <View className="bg-amber-500 rounded-full p-1.5">
+                              <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                            </View>
+                          )}
+                        </View>
                       </View>
-                    </LinearGradient>
-                  </Pressable>
-                ))}
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Other Versions Section */}
+              <Text className="text-[13px] text-gray-500 font-lexend-semibold mb-3 px-1">
+                OTHER VERSIONS
+              </Text>
+              <View className="gap-3">
+                {bibleVersions.filter(v => !v.popular).map((version, index) => {
+                  const actualIndex = bibleVersions.indexOf(version);
+                  return (
+                    <Pressable
+                      onPress={() => setActiveVersion(actualIndex)}
+                      key={actualIndex}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                    >
+                      <View
+                        style={{
+                          backgroundColor: activeVersion === actualIndex ? '#FFFBEB' : '#FFFFFF',
+                          paddingHorizontal: 20,
+                          paddingVertical: 18,
+                          borderRadius: 16,
+                          borderWidth: 2,
+                          borderColor: activeVersion === actualIndex ? '#F59E0B' : '#F3F4F6',
+                          shadowColor: activeVersion === actualIndex ? '#F59E0B' : '#000',
+                          shadowOffset: { width: 0, height: activeVersion === actualIndex ? 4 : 2 },
+                          shadowOpacity: activeVersion === actualIndex ? 0.15 : 0.05,
+                          shadowRadius: activeVersion === actualIndex ? 8 : 3,
+                          elevation: activeVersion === actualIndex ? 4 : 1,
+                        }}
+                      >
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-1">
+                            <Text className="text-[18px] font-lexend-bold text-gray-900 mb-1">
+                              {version.name}
+                            </Text>
+                            <Text className="text-[13px] text-gray-500 font-lexend-light">
+                              {version.full}
+                            </Text>
+                          </View>
+                          {activeVersion === actualIndex && (
+                            <View className="bg-amber-500 rounded-full p-1.5">
+                              <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
             </ScrollView>
           </Animated.View>
         );
 
       case 1:
-        const quickGoals = [5, 10, 15, 20, 25];
+        const goals = [
+          { value: 3, label: "Light", subtitle: "3 verses/day · ~2 min", emoji: "🌱" },
+          { value: 5, label: "Steady", subtitle: "5 verses/day · ~3 min", emoji: "📖" },
+          { value: 10, label: "Committed", subtitle: "10 verses/day · ~5 min", emoji: "✨" },
+          { value: 15, label: "Devoted", subtitle: "15 verses/day · ~8 min", emoji: "🔥" },
+        ];
 
         return (
           <Animated.View
             style={contentStyle}
-            className="flex-1 justify-center items-center px-4"
+            className="flex-1 justify-center px-2"
           >
-            <View className="w-full gap-6">
-              <View className="items-center gap-3">
-                <View className="bg-amber-100/60 p-4 rounded-full">
-                  <Target size={40} color="#F9C846" strokeWidth={2} />
-                </View>
-                <Text className="text-[16px] text-gray-600 font-lexend-light text-center">
-                  Set a goal that works for you
-                </Text>
-              </View>
-
-              {/* Input field */}
-              <View className="relative">
-                <TextInput
-                  value={String(target)}
-                  onChangeText={(text) =>
-                    setTarget(text.replace(/[^0-9]/g, ""))
-                  }
-                  placeholder="0"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  className="border-2 border-amber-200 bg-white text-center font-lexend-medium text-[48px] px-6 w-full py-6 rounded-[24px]"
-                  style={{
-                    shadowColor: "#F9C846",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                    elevation: 4,
+            <View className="gap-3">
+              {goals.map((goal) => (
+                <Pressable
+                  key={goal.value}
+                  onPress={() => {
+                    setIsCustomGoal(false);
+                    setTarget(String(goal.value));
                   }}
-                />
-                <Text className="text-center text-gray-500 font-lexend-light text-[15px] mt-3">
-                  verses per day
-                </Text>
-              </View>
-
-              {/* Quick goal buttons */}
-              <View className="flex-row justify-center flex-wrap gap-3 mt-2">
-                {quickGoals.map((num) => (
-                  <Pressable
-                    key={num}
-                    onPress={() => setTarget(String(num))}
-                    className={`px-5 py-3 rounded-full border ${
-                      parseInt(target) === num
-                        ? "bg-amber-300 border-amber-400"
-                        : "bg-white border-gray-200"
-                    } active:scale-95`}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.8 : 1,
+                  })}
+                >
+                  <View
                     style={{
-                      shadowColor:
-                        parseInt(target) === num ? "#F9C846" : "transparent",
+                      backgroundColor: !isCustomGoal && parseInt(target) === goal.value ? '#FFFBEB' : '#FFFFFF',
+                      borderRadius: 18,
+                      borderWidth: 2,
+                      borderColor: !isCustomGoal && parseInt(target) === goal.value ? '#F59E0B' : '#E5E7EB',
+                      shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: parseInt(target) === num ? 0.2 : 0,
+                      shadowOpacity: 0.03,
                       shadowRadius: 4,
-                      elevation: parseInt(target) === num ? 3 : 0,
+                      elevation: 1,
                     }}
                   >
-                    <Text
-                      className={`font-lexend-medium text-[16px] ${
-                        parseInt(target) === num
-                          ? "text-gray-800"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {num}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+                    <View className="flex-row items-center px-4 py-4">
+                      {/* Emoji Circle */}
+                      <View
+                        className={`w-12 h-12 rounded-full items-center justify-center mr-3.5 ${!isCustomGoal && parseInt(target) === goal.value ? 'bg-amber-100' : 'bg-gray-50'
+                          }`}
+                      >
+                        <Text className="text-[24px]">{goal.emoji}</Text>
+                      </View>
 
-              <View className="bg-amber-50 rounded-[18px] p-4 border border-amber-100">
-                <Text className="text-[13px] text-gray-600 font-lexend-light text-center">
-                  💡 Most people start with 5–15 verses daily
+                      {/* Text Content */}
+                      <View className="flex-1">
+                        <Text className="text-[17px] font-lexend-bold text-gray-900 mb-0.5">
+                          {goal.label}
+                        </Text>
+                        <Text className="text-[13px] text-gray-500 font-lexend-light">
+                          {goal.subtitle}
+                        </Text>
+                      </View>
+
+                      {/* Check Icon */}
+                      {!isCustomGoal && parseInt(target) === goal.value && (
+                        <View className="bg-amber-500 rounded-full p-1.5">
+                          <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+
+              {/* Custom Goal Option */}
+              <Pressable
+                onPress={() => {
+                  setIsCustomGoal(true);
+                  if (customValue) {
+                    setTarget(customValue);
+                  }
+                }}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    backgroundColor: isCustomGoal ? '#FFFBEB' : '#FFFFFF',
+                    borderRadius: 18,
+                    borderWidth: 2,
+                    borderColor: isCustomGoal ? '#F59E0B' : '#E5E7EB',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 4,
+                    elevation: 1,
+                  }}
+                >
+                  <View className="px-4 py-4">
+                    <View className="flex-row items-center">
+                      {/* Icon Circle */}
+                      <View
+                        className={`w-12 h-12 rounded-full items-center justify-center mr-3.5 ${isCustomGoal ? 'bg-amber-100' : 'bg-gray-50'
+                          }`}
+                      >
+                        <Edit3 size={20} color={isCustomGoal ? '#F59E0B' : '#6B7280'} strokeWidth={2} />
+                      </View>
+
+                      {/* Text Content */}
+                      <View className="flex-1">
+                        <Text className="text-[17px] font-lexend-bold text-gray-900 mb-0.5">
+                          Custom Goal
+                        </Text>
+                        <Text className="text-[13px] text-gray-500 font-lexend-light">
+                          Set your own daily target
+                        </Text>
+                      </View>
+
+                      {/* Check Icon */}
+                      {isCustomGoal && customValue && parseInt(customValue) > 0 && (
+                        <View className="bg-amber-500 rounded-full p-1.5">
+                          <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Input Field - Only shown when custom is selected */}
+                    {isCustomGoal && (
+                      <View className="mt-3 pt-3 border-t border-gray-100">
+                        <View className="flex-row items-center gap-2">
+                          <TextInput
+                            value={customValue}
+                            onChangeText={(text) => {
+                              // Only allow numbers
+                              const numericValue = text.replace(/[^0-9]/g, '');
+                              setCustomValue(numericValue);
+                              setTarget(numericValue);
+                            }}
+                            placeholder="Enter verses"
+                            keyboardType="number-pad"
+                            maxLength={3}
+                            autoFocus
+                            className="text-[15px] font-lexend-medium text-gray-900 bg-white px-4 py-3 rounded-xl border-2 border-amber-200 min-w-[100px]"
+                            placeholderTextColor="#9CA3AF"
+                          />
+                          <Text className="text-[14px] text-gray-600 font-lexend-medium">
+                            verses/day
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+
+              {/* Info Card */}
+              <View className="bg-blue-50/60 rounded-xl p-4 mt-3 border border-blue-100/50">
+                <Text className="text-[12px] text-blue-900 font-lexend-light text-center leading-5">
+                  💡 Start small and build consistency
                 </Text>
               </View>
             </View>
@@ -352,96 +425,210 @@ export default function OnboardingSteps() {
         return (
           <Animated.View style={contentStyle} className="flex-1">
             <ScrollView
-              className="flex-1 px-1"
+              className="flex-1"
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20 }}
+              contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 4 }}
             >
-              <View className="flex-row flex-wrap gap-3">
-                {categories.map((category, index) => (
-                  <Pressable
-                    onPress={() => toggleCategories(index)}
-                    key={index}
-                    className="active:scale-95"
-                    style={{ width: "47%" }}
-                  >
-                    <LinearGradient
-                      colors={
-                        selectCategories.includes(index)
-                          ? ["#FEE8A0", "#F9C846"]
-                          : ["#fafafa", "#f5f5f5"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      className={`p-5 rounded-[18px] border ${
-                        selectCategories.includes(index)
-                          ? "border-amber-300"
-                          : "border-gray-200"
-                      }`}
-                      style={{
-                        padding: 20,
-                        borderRadius: 18,
-                        border: 1,
-                        borderColor: selectCategories.includes(index)
-                          ? "#FCD34D"
-                          : "#E5E7EB",
-                        shadowColor: selectCategories.includes(index)
-                          ? "#F9C846"
-                          : "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: selectCategories.includes(index)
-                          ? 0.2
-                          : 0.05,
-                        shadowRadius: 4,
-                        elevation: selectCategories.includes(index) ? 4 : 1,
-                      }}
-                    >
-                      <View className="gap-2">
-                        <Text
-                          className={`font-lexend-medium text-[16px] ${
-                            selectCategories.includes(index)
-                              ? "text-gray-800"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {category}
-                        </Text>
-                        {selectCategories.includes(index) && (
-                          <View className="absolute top-0 right-0 bg-white rounded-full p-1">
-                            <Check size={16} color="#F9C846" strokeWidth={3} />
-                          </View>
-                        )}
+              {/* Progress Indicator */}
+              <View className="mb-5">
+                <LinearGradient
+                  colors={selectCategories.length >= 3 ? ['#ECFDF5', '#D1FAE5'] : ['#FFFBEB', '#FEF3C7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    borderRadius: 20,
+                    padding: 20,
+                    borderWidth: 1.5,
+                    borderColor: selectCategories.length >= 3 ? '#A7F3D0' : '#FDE68A',
+                    shadowColor: selectCategories.length >= 3 ? '#10B981' : '#F59E0B',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 3
+                  }}
+                >
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center gap-2">
+                      <View className={`w-9 h-9 rounded-full items-center justify-center ${selectCategories.length >= 3 ? 'bg-green-500' : 'bg-amber-500'}`}>
+                        <Heart size={18} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
                       </View>
-                    </LinearGradient>
-                  </Pressable>
-                ))}
+                      <Text className="text-[15px] font-lexend-bold text-gray-900">
+                        Your Selection
+                      </Text>
+                    </View>
+                    <View className={`px-3 py-1.5 rounded-full ${selectCategories.length >= 3 ? 'bg-green-500' : 'bg-amber-500'}`}>
+                      <Text className="text-[13px] font-lexend-bold text-white">
+                        {selectCategories.length} / 3 {selectCategories.length >= 3 ? '✓' : ''}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* Progress bar */}
+                  <View className="h-3 bg-white/50 rounded-full overflow-hidden">
+                    <LinearGradient
+                      colors={selectCategories.length >= 3 ? ['#10B981', '#059669'] : ['#FBBF24', '#F59E0B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{
+                        height: '100%',
+                        width: `${Math.min((selectCategories.length / 3) * 100, 100)}%`,
+                        borderRadius: 999
+                      }}
+                    />
+                  </View>
+                  {selectCategories.length < 3 && (
+                    <Text className="text-[12px] text-amber-800 font-lexend-medium mt-2 text-center">
+                      Select {3 - selectCategories.length} more topic{3 - selectCategories.length !== 1 ? 's' : ''} to continue
+                    </Text>
+                  )}
+                </LinearGradient>
               </View>
 
-              <View className="bg-amber-50 rounded-[18px] p-4 border border-amber-100 mt-4">
-                <Text className="text-[13px] text-gray-600 font-lexend-light text-center">
-                  ✨ Selected: {selectCategories.length} / {categories.length}
-                </Text>
+              {/* Categories Grid */}
+              <View className="flex-row flex-wrap" style={{ marginHorizontal: -6 }}>
+                {categories.map((category, index) => {
+                  const isSelected = selectCategories.includes(index);
+                  return (
+                    <View
+                      key={index}
+                      style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}
+                    >
+                      <Pressable
+                        onPress={() => toggleCategories(index)}
+                        style={({ pressed }) => ({
+                          opacity: pressed ? 0.85 : 1,
+                          transform: [{ scale: pressed ? 0.97 : 1 }]
+                        })}
+                      >
+                        <LinearGradient
+                          colors={isSelected
+                            ? ['#FFFBEB', '#FEF3C7']
+                            : ['#FFFFFF', '#FAFAFA']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{
+                            padding: 20,
+                            borderRadius: 20,
+                            borderWidth: 2,
+                            borderColor: isSelected ? '#F59E0B' : '#E5E7EB',
+                            shadowColor: isSelected ? '#F59E0B' : '#000',
+                            shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
+                            shadowOpacity: isSelected ? 0.2 : 0.05,
+                            shadowRadius: isSelected ? 8 : 3,
+                            elevation: isSelected ? 4 : 1,
+                            minHeight: 120,
+                          }}
+                        >
+                          <View className="items-center justify-center gap-3 flex-1">
+                            <View
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 28,
+                                backgroundColor: isSelected ? category.color : '#F3F4F6',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                shadowColor: isSelected ? category.color : '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: isSelected ? 0.3 : 0.1,
+                                shadowRadius: 4,
+                                elevation: 2
+                              }}
+                            >
+                              <Text className="text-[28px]">{category.emoji}</Text>
+                            </View>
+                            <Text
+                              className={`font-lexend-bold text-[15px] text-center ${isSelected ? "text-gray-900" : "text-gray-600"
+                                }`}
+                              numberOfLines={1}
+                            >
+                              {category.name}
+                            </Text>
+                          </View>
+                          {isSelected && (
+                            <View
+                              className="absolute bg-amber-500 rounded-full p-1.5"
+                              style={{
+                                top: 6,
+                                right: 6,
+                                shadowColor: '#F59E0B',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.4,
+                                shadowRadius: 4,
+                                elevation: 3
+                              }}
+                            >
+                              <Check size={14} color="#FFFFFF" strokeWidth={3.5} />
+                            </View>
+                          )}
+                        </LinearGradient>
+                      </Pressable>
+                    </View>
+                  );
+                })}
               </View>
+
+              {/* Info Card */}
+              <LinearGradient
+                colors={['#F5F3FF', '#EDE9FE']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  borderRadius: 20,
+                  padding: 18,
+                  marginTop: 24,
+                  borderWidth: 1.5,
+                  borderColor: '#DDD6FE',
+                  shadowColor: '#8B5CF6',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                  elevation: 2
+                }}
+              >
+                <View className="flex-row items-start gap-3">
+                  <View className="w-10 h-10 rounded-full bg-purple-500 items-center justify-center">
+                    <Sparkles size={20} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[15px] text-purple-900 font-lexend-bold mb-1">
+                      Personalized Content
+                    </Text>
+                    <Text className="text-[13px] text-purple-800 font-lexend-regular leading-5">
+                      We'll curate daily verses that match your interests and help you grow spiritually
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
             </ScrollView>
           </Animated.View>
         );
     }
   };
 
+  const stepTitles = [
+    { title: "Choose Your Bible", subtitle: "Select your preferred translation", icon: BookOpen },
+    { title: "Set Your Daily Goal", subtitle: "How many verses per day?", icon: Target },
+    { title: "Pick Your Topics", subtitle: "What matters most to you?", icon: Heart },
+  ];
+
   return (
     <LinearGradient
-      colors={["#fffbf5", "#fff9e6", "#fef8ed"]}
+      colors={["#FFFDF7", "#FFF9EB", "#FFF4D6"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
       style={{ flex: 1 }}
     >
       <SafeAreaView className="flex-1">
-        <View className="flex-1 px-5">
+        <View className="flex-1">
           {/* Header */}
-          <View className="py-4">
-            <View className="flex-row items-center justify-between mb-4">
+          <View className="px-6 pt-2 pb-6">
+            {/* Back button + Progress */}
+            <View className="flex-row items-center justify-between mb-6">
               {step > 0 ? (
-                <Pressable onPress={BackHandler} className="active:opacity-60">
-                  <View className="flex-row items-center gap-1">
-                    <ChevronLeft size={24} color="#57534e" strokeWidth={2.5} />
-                    <Text className="text-[16px] font-lexend text-stone-700">
+                <Pressable onPress={BackHandler} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+                  <View className="flex-row items-center gap-1 py-2">
+                    <ChevronLeft size={22} color="#78350F" strokeWidth={2.5} />
+                    <Text className="text-[16px] font-lexend-semibold text-amber-900">
                       Back
                     </Text>
                   </View>
@@ -450,73 +637,72 @@ export default function OnboardingSteps() {
                 <View />
               )}
 
+              {/* Progress dots */}
               <View className="flex-row gap-2">
                 {[0, 1, 2].map((i) => (
                   <View
                     key={i}
-                    className={`h-2 rounded-full ${
-                      i === step ? "w-8 bg-amber-400" : "w-2 bg-gray-300"
-                    }`}
+                    style={{
+                      height: 8,
+                      width: i === step ? 28 : 8,
+                      borderRadius: 4,
+                      backgroundColor: i === step ? '#F59E0B' : i < step ? '#FCD34D' : '#E5E7EB',
+                    }}
                   />
                 ))}
               </View>
+
+              <View style={{ width: 60 }} />
             </View>
 
-            {/* Question Header */}
-            <View className="gap-2 mb-6">
-              <View className="flex-row items-center gap-2">
-                <View className="bg-amber-100/60 p-2 rounded-full">
-                  {React.createElement(onboardingQuestions[step].icon, {
-                    size: 24,
-                    color: "#F9C846",
-                    strokeWidth: 2,
-                  })}
-                </View>
-                <Text className="text-[24px] font-lexend text-gray-800 flex-1">
-                  {onboardingQuestions[step].title}
-                </Text>
-              </View>
-              <Text className="text-[15px] text-gray-600 font-lexend-light ml-12">
-                {onboardingQuestions[step].subtitle}
+            {/* Title Section */}
+            <View className="gap-2">
+              <Text className="text-[30px] font-lexend-bold text-gray-900 leading-tight">
+                {stepTitles[step].title}
+              </Text>
+              <Text className="text-[15px] text-gray-600 font-lexend-light">
+                {stepTitles[step].subtitle}
               </Text>
             </View>
           </View>
 
           {/* Content */}
-          <View className="flex-1">{renderContent()}</View>
+          <View className="flex-1 px-6">{renderContent()}</View>
 
-          {/* Next Button */}
-          <View className="py-6">
+          {/* Next Button - Fixed at bottom */}
+          <View className="px-6 pb-6 pt-4">
             <Pressable
               onPress={() => NextHandler(step)}
-              className="rounded-[20px] overflow-hidden active:scale-[0.97]"
-              style={{
-                shadowColor: "#F9C846",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 6,
-              }}
+              style={({ pressed }) => [
+                {
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                  shadowColor: '#F59E0B',
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 8,
+                }
+              ]}
             >
               <LinearGradient
-                colors={["#FEE8A0", "#F9C846", "#F6B73C"]}
+                colors={['#FDE68A', '#FCD34D', '#F59E0B']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  display: "flex",
                   flexDirection: "row",
                   justifyContent: "center",
                   alignItems: "center",
-                  paddingVertical: 20,
-                  gap: 8,
-                  borderWidth: 0.5,
-                  borderColor: "rgb(255 255 255 / 0.6)",
+                  paddingVertical: 18,
+                  gap: 10,
+                  borderRadius: 20,
+                  borderTopWidth: 1,
+                  borderTopColor: 'rgba(255, 255, 255, 0.6)',
                 }}
               >
-                <Text className="text-[18px] font-lexend-medium text-gray-800">
-                  {step === 2 ? "Complete Setup" : "Continue"}
+                <Text className="text-[17px] font-lexend-bold text-amber-950">
+                  {step === 2 ? "Start Reading 📖" : "Continue"}
                 </Text>
-                <Sparkles size={20} color="#57534e" fill="#FEE8A0" />
+                {step !== 2 && <Sparkles size={18} color="#78350F" fill="#FDE68A" />}
               </LinearGradient>
             </Pressable>
           </View>
