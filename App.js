@@ -1,12 +1,10 @@
 import { NavigationContainer } from "@react-navigation/native";
-import { View, Text } from "react-native";
-import RootNavigator from "./src/navigation/RootNavigator";
-import "./global.css";
-import { AuthProvide, AuthProvider } from "./src/context/AuthContext";
-import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-
+import "./global.css";
+import { AuthProvider } from "./src/context/AuthContext";
+import RootNavigator from "./src/navigation/RootNavigator";
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
@@ -35,6 +33,10 @@ export default function App() {
       console.log("Fonts loaded");
     }
   }, [fontsLoaded, fontError]);
+
+
+
+
 
   if (!fontsLoaded && !fontError) {
     return null; // Or return a loading component

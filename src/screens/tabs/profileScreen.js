@@ -1,18 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { FileText, Heart, Info, LogOut, MessageSquare, Settings, Shield, X } from "lucide-react-native";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Easing } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ReelsViewer from "../../components/ReelsViewer";
 import { useAuth } from "../../context/AuthContext";
@@ -42,6 +32,10 @@ export default function ProfileScreen() {
     savedCount: 0,
   });
 
+  // Gamification Stats
+  const [gamificationStats, setGamificationStats] = useState(null);
+  const [badgeCount, setBadgeCount] = useState(0);
+
   // ReelsViewer state
   const [reelsVisible, setReelsVisible] = useState(false);
   const [reelsVerses, setReelsVerses] = useState([]);
@@ -54,6 +48,48 @@ export default function ProfileScreen() {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [postComments, setPostComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
+
+  // Animations
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Floating Animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -10,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Breathing Animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 3000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   useEffect(() => {
     fetchProfileData();
@@ -83,6 +119,31 @@ export default function ProfileScreen() {
         // Continue with other data even if profile fails
       } else {
         setProfile(profileData);
+      }
+
+      // Fetch Gamification Stats
+      const { data: gameStats, error: gameError } = await supabase
+        .from("gamification_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (gameError) {
+        console.error("Error fetching gamification stats:", gameError);
+      } else {
+        setGamificationStats(gameStats);
+      }
+
+      // Fetch Badge Count
+      const { count: badgesCount, error: badgesError } = await supabase
+        .from("user_badges")
+        .select("*", { count: 'exact', head: true })
+        .eq("user_id", user.id);
+
+      if (badgesError) {
+        console.error("Error fetching badges count:", badgesError);
+      } else {
+        setBadgeCount(badgesCount || 0);
       }
 
       // Fetch testimonials with counts and error handling
@@ -567,119 +628,199 @@ export default function ProfileScreen() {
     );
   }
 
+
+
+
+
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-white" edges={['none']}>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#6b7280" />
         }
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
         {/* Beautiful Header with Lumi */}
-        <LinearGradient
-          colors={['#fef3c7', '#fde68a', '#ffffff']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ paddingBottom: 32 }}
-        >
+        <View style={{ marginBottom: 20 }}>
+          {/* Background Gradient & Decor */}
+          <LinearGradient
+            colors={['#FFFBEB', '#FEF3C7', '#f7f7f7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 400,
+              borderBottomLeftRadius: 40,
+              borderBottomRightRadius: 40,
+            }}
+          />
+
+          {/* Decorative Orbs */}
+          <View className="absolute top-[-50] left-[-50] w-64 h-64 bg-amber-200/30 rounded-full blur-3xl" />
+          <View className="absolute top-[50] right-[-20] w-48 h-48 bg-orange-200/20 rounded-full blur-3xl" />
+
           {/* Settings Button */}
           <Pressable
             onPress={() => setSettingsVisible(true)}
             className="active:opacity-60"
             style={{
               position: 'absolute',
-              top: 60,
-              right: 20,
+              top: 50,
+              right: 24,
               zIndex: 100,
-              backgroundColor: 'rgba(255,255,255,0.95)',
-              borderRadius: 12,
-              padding: 10,
-              shadowColor: '#f59e0b',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.15,
-              shadowRadius: 8,
-              elevation: 3,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              borderRadius: 16,
+              padding: 12,
+              backdropFilter: 'blur(10px)',
             }}
           >
-            <Settings size={20} color="#78716c" strokeWidth={2} pointerEvents="none" />
+            <Settings size={22} color="#78716c" strokeWidth={2} pointerEvents="none" />
           </Pressable>
 
-          {/* Header Content with Lumi */}
-          <View style={{ paddingTop: 70, paddingHorizontal: 24 }}>
-            {/* Lumi Character */}
-            <View className="items-center mb-6">
-              <Image
-                source={images.Char}
-                style={{ width: 120, height: 120 }}
-                resizeMode="contain"
-              />
-            </View>
+          {/* Header Content */}
+          <View style={{ paddingTop: 40, paddingHorizontal: 24, alignItems: 'center' }}>
 
-            {/* User Info Card */}
-            <View
+            {/* Animated Lumi Character */}
+            <Animated.View
               style={{
-                backgroundColor: 'rgba(255,255,255,0.95)',
-                borderRadius: 24,
-                paddingVertical: 24,
-                paddingHorizontal: 24,
-                shadowColor: '#f59e0b',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.08,
-                shadowRadius: 24,
-                elevation: 3,
-                borderWidth: 1,
-                borderColor: 'rgba(251, 191, 36, 0.15)',
+                transform: [
+                  { translateY: floatAnim },
+                  { scale: scaleAnim }
+                ],
+                marginBottom: 24,
+                shadowColor: '#F59E0B',
+                shadowOffset: { width: 0, height: 20 },
+                shadowOpacity: 0.2,
+                shadowRadius: 30,
               }}
             >
-              <View className="items-center">
+              <Image
+                source={images.Char}
+                style={{ width: 180, height: 180 }}
+                resizeMode="contain"
+              />
+            </Animated.View>
+
+            {/* User Info Card - Glassmorphism */}
+            <View
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(255,255,255,0.75)',
+                borderRadius: 32,
+                paddingVertical: 28,
+                paddingHorizontal: 24,
+                shadowColor: '#78350f',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.05,
+                shadowRadius: 20,
+                elevation: 5,
+                borderWidth: 0.5,
+                borderColor: '#e1e1e1',
+              }}
+            >
+              <View className="items-center mb-2">
                 <Text
-                  className="text-gray-900 font-lexend-bold text-2xl mb-1.5"
+                  className="text-gray-900 font-lexend-bold text-2xl mb-1"
                   numberOfLines={1}
                   style={{ letterSpacing: -0.5 }}
                 >
                   {profile?.display_name || user.email?.split('@')[0]}
                 </Text>
-                <Text className="text-gray-500 font-lexend-regular text-sm" numberOfLines={1}>
-                  {user.email}
-                </Text>
+                <View className="bg-amber-100/50 px-3 py-1 rounded-full border border-amber-100">
+                  <Text className="text-amber-800 font-lexend-medium text-xs">
+                    {user.email}
+                  </Text>
+                </View>
               </View>
+
+              {/* Gamification Stats */}
+              {gamificationStats && (
+                <View className="flex-row justify-between mt-6 pt-6 border-t border-gray-100">
+                  {/* Level */}
+                  <View className="items-center flex-1">
+                    <Text className="text-gray-400 text-[10px] font-lexend-bold uppercase tracking-wider mb-1">
+                      Level
+                    </Text>
+                    <Text className="text-gray-900 text-xl font-lexend-bold">
+                      {gamificationStats.current_level}
+                    </Text>
+                  </View>
+
+                  {/* XP */}
+                  <View className="items-center flex-1 border-l border-gray-100">
+                    <Text className="text-gray-400 text-[10px] font-lexend-bold uppercase tracking-wider mb-1">
+                      XP
+                    </Text>
+                    <Text className="text-indigo-600 text-xl font-lexend-bold">
+                      {gamificationStats.total_xp >= 1000
+                        ? `${(gamificationStats.total_xp / 1000).toFixed(1)}k`
+                        : gamificationStats.total_xp}
+                    </Text>
+                  </View>
+
+                  {/* Badges */}
+                  <View className="items-center flex-1 border-l border-gray-100">
+                    <Text className="text-gray-400 text-[10px] font-lexend-bold uppercase tracking-wider mb-1">
+                      Badges
+                    </Text>
+                    <Text className="text-amber-500 text-xl font-lexend-bold">
+                      {badgeCount}
+                    </Text>
+                  </View>
+
+                  {/* Streak */}
+                  <View className="items-center flex-1 border-l border-gray-100">
+                    <Text className="text-gray-400 text-[10px] font-lexend-bold uppercase tracking-wider mb-1">
+                      Streak
+                    </Text>
+                    <Text className="text-orange-500 text-xl font-lexend-bold">
+                      {gamificationStats.current_streak}🔥
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Stats Cards - Beautiful Gradients */}
-        <View style={{ paddingHorizontal: 20, marginTop: -12 }}>
+        <View style={{ paddingHorizontal: 20 }}>
           <View className="flex-row justify-between gap-2.5">
             <Pressable
               onPress={() => setActiveTab("posts")}
               className="flex-1"
               style={{
                 shadowColor: activeTab === "posts" ? '#f59e0b' : '#94a3b8',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: activeTab === "posts" ? 0.2 : 0.05,
-                shadowRadius: 16,
-                elevation: activeTab === "posts" ? 6 : 1,
+                shadowOffset: { width: 0, height: activeTab === "posts" ? 6 : 2 },
+                shadowOpacity: activeTab === "posts" ? 0.25 : 0.1,
+                shadowRadius: activeTab === "posts" ? 12 : 4,
+                elevation: activeTab === "posts" ? 6 : 2,
+                transform: [{ scale: activeTab === "posts" ? 1.02 : 1 }],
               }}
             >
               <LinearGradient
-                colors={activeTab === "posts" ? ['#fbbf24', '#f59e0b'] : ['#ffffff', '#fafafa']}
+                colors={activeTab === "posts" ? ['#fbbf24', '#f59e0b'] : ['#fffbeb', '#fff7ed']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  borderRadius: 24,
-                  paddingVertical: 20,
-                  paddingHorizontal: 16,
+                  borderRadius: 20,
+                  paddingVertical: 16,
+                  paddingHorizontal: 12,
                   borderWidth: activeTab === "posts" ? 0 : 1,
-                  borderColor: '#f1f5f9',
+                  borderColor: activeTab === "posts" ? 'transparent' : '#fcd34d',
                 }}
               >
                 <View className="items-center">
                   <Text
-                    className="font-lexend-medium mb-1"
+                    className="font-lexend-medium mb-0.5"
                     style={{
-                      color: activeTab === "posts" ? '#ffffff' : '#1f2937',
-                      fontSize: 24,
-                      letterSpacing: -1.5
+                      color: activeTab === "posts" ? '#ffffff' : '#92400e',
+                      fontSize: 20,
+                      letterSpacing: -1
                     }}
                   >
                     {stats.postsCount}
@@ -687,9 +828,9 @@ export default function ProfileScreen() {
                   <Text
                     className="font-lexend-semibold uppercase"
                     style={{
-                      color: activeTab === "posts" ? 'rgba(255,255,255,0.9)' : '#6b7280',
-                      fontSize: 11,
-                      letterSpacing: -0.4
+                      color: activeTab === "posts" ? 'rgba(255,255,255,0.9)' : '#b45309',
+                      fontSize: 10,
+                      letterSpacing: -0.2
                     }}
                   >
                     Posts
@@ -703,30 +844,31 @@ export default function ProfileScreen() {
               className="flex-1"
               style={{
                 shadowColor: activeTab === "liked" ? '#8b5cf6' : '#94a3b8',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: activeTab === "liked" ? 0.2 : 0.05,
-                shadowRadius: 16,
-                elevation: activeTab === "liked" ? 6 : 1,
+                shadowOffset: { width: 0, height: activeTab === "liked" ? 6 : 2 },
+                shadowOpacity: activeTab === "liked" ? 0.25 : 0.1,
+                shadowRadius: activeTab === "liked" ? 12 : 4,
+                elevation: activeTab === "liked" ? 6 : 2,
+                transform: [{ scale: activeTab === "liked" ? 1.02 : 1 }],
               }}
             >
               <LinearGradient
-                colors={activeTab === "liked" ? ['#a78bfa', '#c4b5fd'] : ['#ffffff', '#fafafa']}
+                colors={activeTab === "liked" ? ['#a78bfa', '#c4b5fd'] : ['#f5f3ff', '#ede9fe']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  borderRadius: 24,
-                  paddingVertical: 20,
-                  paddingHorizontal: 16,
+                  borderRadius: 20,
+                  paddingVertical: 16,
+                  paddingHorizontal: 12,
                   borderWidth: activeTab === "liked" ? 0 : 1,
-                  borderColor: '#f1f5f9',
+                  borderColor: activeTab === "liked" ? 'transparent' : '#ddd6fe',
                 }}
               >
                 <View className="items-center">
                   <Text
-                    className="font-lexend-medium mb-1"
+                    className="font-lexend-medium mb-0.5"
                     style={{
-                      color: activeTab === "liked" ? '#ffffff' : '#1f2937',
-                      fontSize: 24,
+                      color: activeTab === "liked" ? '#ffffff' : '#5b21b6',
+                      fontSize: 20,
                       letterSpacing: -0.4
                     }}
                   >
@@ -735,9 +877,9 @@ export default function ProfileScreen() {
                   <Text
                     className="font-lexend-semibold uppercase"
                     style={{
-                      color: activeTab === "liked" ? 'rgba(255,255,255,0.9)' : '#6b7280',
-                      fontSize: 11,
-                      letterSpacing: -0.4
+                      color: activeTab === "liked" ? 'rgba(255,255,255,0.9)' : '#7c3aed',
+                      fontSize: 10,
+                      letterSpacing: -0.2
                     }}
                   >
                     Liked
@@ -751,30 +893,31 @@ export default function ProfileScreen() {
               className="flex-1"
               style={{
                 shadowColor: activeTab === "saved" ? '#3b82f6' : '#94a3b8',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: activeTab === "saved" ? 0.2 : 0.05,
-                shadowRadius: 16,
-                elevation: activeTab === "saved" ? 6 : 1,
+                shadowOffset: { width: 0, height: activeTab === "saved" ? 6 : 2 },
+                shadowOpacity: activeTab === "saved" ? 0.25 : 0.1,
+                shadowRadius: activeTab === "saved" ? 12 : 4,
+                elevation: activeTab === "saved" ? 6 : 2,
+                transform: [{ scale: activeTab === "saved" ? 1.02 : 1 }],
               }}
             >
               <LinearGradient
-                colors={activeTab === "saved" ? ['#60a5fa', '#3b82f6'] : ['#ffffff', '#fafafa']}
+                colors={activeTab === "saved" ? ['#60a5fa', '#3b82f6'] : ['#eff6ff', '#dbeafe']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
-                  borderRadius: 24,
-                  paddingVertical: 20,
-                  paddingHorizontal: 16,
+                  borderRadius: 20,
+                  paddingVertical: 16,
+                  paddingHorizontal: 12,
                   borderWidth: activeTab === "saved" ? 0 : 1,
-                  borderColor: '#f1f5f9',
+                  borderColor: activeTab === "saved" ? 'transparent' : '#bfdbfe',
                 }}
               >
                 <View className="items-center">
                   <Text
-                    className="font-lexend-medium mb-1"
+                    className="font-lexend-medium mb-0.5"
                     style={{
-                      color: activeTab === "saved" ? '#ffffff' : '#1f2937',
-                      fontSize: 24,
+                      color: activeTab === "saved" ? '#ffffff' : '#1e40af',
+                      fontSize: 20,
                       letterSpacing: -1.5
                     }}
                   >
@@ -783,9 +926,9 @@ export default function ProfileScreen() {
                   <Text
                     className="font-lexend-semibold uppercase"
                     style={{
-                      color: activeTab === "saved" ? 'rgba(255,255,255,0.9)' : '#6b7280',
-                      fontSize: 11,
-                      letterSpacing: -0.4
+                      color: activeTab === "saved" ? 'rgba(255,255,255,0.9)' : '#2563eb',
+                      fontSize: 10,
+                      letterSpacing: -0.2
                     }}
                   >
                     Saved

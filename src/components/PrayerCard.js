@@ -1,7 +1,7 @@
 // PrayerWallScreen.js
 import { LinearGradient } from "expo-linear-gradient";
 import { Heart, MessageCircle, Plus, Send, X } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,6 @@ import {
   TextInput,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -29,7 +28,7 @@ const categories = [
 
 const COMMENT_MAX_LENGTH = 250;
 
-export default function PrayerWallScreen() {
+const PrayerWallScreen = React.memo(function PrayerWallScreen() {
   const { user } = useAuth();
   const [prayers, setPrayers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -509,7 +508,7 @@ export default function PrayerWallScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 ">
+    <View className="flex-1 mb-8 mt-12 ">
       {/* Header */}
       <View className=" px-4 pt-0 pb-4 border-b border-stone-200">
         <View className="flex-row items-center justify-between">
@@ -1034,6 +1033,8 @@ export default function PrayerWallScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
-}
+});
+
+export default PrayerWallScreen;

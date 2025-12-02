@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
+import LottieView from "lottie-react-native";
 import { Zap } from "lucide-react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { images } from "../utils";
 
@@ -8,6 +9,8 @@ const { width, height } = Dimensions.get("window");
 
 const CelebrationModal = ({ visible, items = [], onClose }) => {
     const scaleAnim = useRef(new Animated.Value(0)).current;
+    const lottieRef = useRef(null);
+    const [loopCount, setLoopCount] = useState(0);
 
     useEffect(() => {
         if (visible) {
@@ -17,10 +20,29 @@ const CelebrationModal = ({ visible, items = [], onClose }) => {
                 damping: 15,
                 stiffness: 100,
             }).start();
+
+            // Reset loop count and play confetti animation
+            setLoopCount(0);
+            if (lottieRef.current) {
+                lottieRef.current.play();
+            }
         } else {
             scaleAnim.setValue(0);
+            if (lottieRef.current) {
+                lottieRef.current.reset();
+            }
         }
     }, [visible]);
+
+    const handleAnimationFinish = () => {
+        const newCount = loopCount + 1;
+        setLoopCount(newCount);
+
+        // Play again if less than 2 times
+        if (newCount < 2 && lottieRef.current) {
+            lottieRef.current.play();
+        }
+    };
 
     if (!items || items.length === 0) return null;
 
@@ -158,6 +180,26 @@ const CelebrationModal = ({ visible, items = [], onClose }) => {
                         </View>
                     </View>
                 </Animated.View>
+
+                {/* Confetti Animation Overlay */}
+                <LottieView
+                    ref={lottieRef}
+                    source={require('../../assets/animations/confetti.json')}
+                    style={{
+                        position: 'absolute',
+                        top: '15%',
+                        left: '15%',
+                        width: '70%',
+                        height: '70%',
+                        zIndex: 10,
+                        pointerEvents: 'none',
+                    }}
+                    loop={false}
+                    autoPlay={false}
+                    speed={1.0}
+                    onAnimationFinish={handleAnimationFinish}
+                    resizeMode="cover"
+                />
             </View>
         </Modal>
     );

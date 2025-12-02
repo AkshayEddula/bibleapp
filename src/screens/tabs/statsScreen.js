@@ -461,7 +461,7 @@ export default function StatsScreen() {
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView className="flex-1">
+      <SafeAreaView className="flex-1" edges={['top']}>
         {/* Header with Character */}
         <View className="px-6 pt-2 pb-6 flex-row items-center justify-between">
           <View className="flex-1 pr-4">

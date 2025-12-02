@@ -732,7 +732,7 @@ export default function HomeScreen() {
   const renderFooter = () => {
     if (activeTab === 'foryou') {
       return (
-        <View className="px-5 pt-0 pb-20">
+        <View className="px-5 pt-0 pb-4">
           <PrayerWallScreen />
           <TestimoniesScreen />
         </View>
@@ -828,7 +828,7 @@ export default function HomeScreen() {
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView className="flex-1">
+      <SafeAreaView className="flex-1" edges={['top']}>
         <FlatList
           data={listData}
           renderItem={renderItem}

@@ -1,83 +1,60 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  BookOpen,
-  ChartSpline,
-  LibraryBig,
-  UserRound,
-} from "lucide-react-native";
-import { useEffect, useState } from "react";
-import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Screens
+import { Award05Icon, Home01Icon, Navigation04Icon, SparklesIcon, UserAiIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import ExploreScreen from "../screens/tabs/exploreScreen";
 import HomeScreen from "../screens/tabs/homeScreen";
+import PostsScreen from "../screens/tabs/postsScreen";
 import ProfileScreen from "../screens/tabs/profileScreen";
 import StatsScreen from "../screens/tabs/statsScreen";
 
 const Tab = createBottomTabNavigator();
 
+// --- Configuration ---
+const COLORS = {
+  primary: "#F9C846",        // Warm Yellow (matches home screen)
+  middleBtnBg: "#F9C846",    // Warm Yellow
+  middleBtnIcon: "#1E293B",  // Dark Gray for contrast
+  inactive: "#9CA3AF",       // Subtle gray
+  background: "#FDFCFB",     // Matches home screen gradient
+  border: "#F7F5F2",         // Subtle border
+  textActive: "#1E293B",     // Dark text
+  gradientStart: "#FDFCFB",
+  gradientEnd: "#F7F5F2",
+};
+
 function CustomTabBar({ state, descriptors, navigation }) {
-  const activeIndex = useSharedValue(state.index);
-  const [tabBarWidth, setTabBarWidth] = useState(0);
-
-  useEffect(() => {
-    activeIndex.value = withSpring(state.index, {
-      damping: 30,
-      stiffness: 150,
-    });
-  }, [state.index]);
-
-  const onLayout = (event) => {
-    const { width } = event.nativeEvent.layout;
-    setTabBarWidth(width);
-  };
-
-  const animatedIndicatorStyle = useAnimatedStyle(() => {
-    if (tabBarWidth === 0) return { left: 0 };
-
-    const numberOfTabs = 4;
-    const horizontalPadding = 2;
-    const availableWidth = tabBarWidth - horizontalPadding * 2;
-    const tabWidth = availableWidth / numberOfTabs;
-    const indicatorWidth = 70;
-
-    const leftPosition =
-      horizontalPadding +
-      activeIndex.value * tabWidth +
-      (tabWidth - indicatorWidth) / 2;
-
-    return {
-      left: leftPosition,
-    };
-  });
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.tabBar} onLayout={onLayout}>
-      {tabBarWidth > 0 && (
-        <Animated.View
-          style={[styles.slidingIndicator, animatedIndicatorStyle]}
-        >
-          <LinearGradient
-            colors={["#fbbf24", "#f59e0b"]} // Richer Gold Gradient
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ flex: 1, borderRadius: 28 }}
-          />
-        </Animated.View>
-      )}
-
+    <LinearGradient
+      colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[
+        styles.tabBar,
+        // {
+        //   paddingTop: 10,
+        //   paddingBottom: Platform.OS === "ios" ? 10 : 0,
+        //   height: 70 + (Platform.OS === "ios" ? 10 : 0),
+        // },
+      ]}
+    >
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
+
+        // Check if this is the middle button (Index 2 in a 5-tab layout)
+        const isMiddle = index === 2;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -91,76 +68,75 @@ function CustomTabBar({ state, descriptors, navigation }) {
           }
         };
 
-        // Icon mapping
+        // Icon Mapping
         const icons = {
-          Home: BookOpen,
-          Explore: LibraryBig,
-          Stats: ChartSpline,
-          Profile: UserRound,
+          Home: Home01Icon,
+          Explore: Navigation04Icon,
+          Post: SparklesIcon,
+          Stats: Award05Icon,
+          Profile: UserAiIcon,
         };
 
-        const IconComponent = icons[route.name];
+        const IconName = icons[route.name];
+
+        // --- RENDER MIDDLE BUTTON ---
+        if (isMiddle) {
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              activeOpacity={0.7}
+              style={styles.middleButtonContainer}
+            >
+              <View style={styles.middleButtonCircle}>
+                <HugeiconsIcon
+                  icon={IconName}
+                  color="#fafafa"
+                  size={28}
+                  strokeWidth={1.3}
+                  pointerEvents="none"
+                />
+              </View>
+            </TouchableOpacity>
+          );
+        }
+
+        // --- RENDER STANDARD TAB ---
+        const iconColor = isFocused ? COLORS.primary : COLORS.inactive;
 
         return (
-          <TabButton
+          <TouchableOpacity
             key={route.key}
-            isFocused={isFocused}
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
             onPress={onPress}
-            IconComponent={IconComponent}
-            label={route.name}
-          />
+            style={styles.tabItem}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconContainer}>
+              <HugeiconsIcon
+                icon={IconName}
+                color={iconColor}
+                size={26}
+                strokeWidth={isFocused ? 1.5 : 1.3}
+                pointerEvents="none"
+              />
+            </View>
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: iconColor,
+                  fontWeight: isFocused ? "600" : "400"
+                },
+              ]}
+            >
+              {route.name}
+            </Text>
+          </TouchableOpacity>
         );
       })}
-    </View>
-  );
-}
-
-function TabButton({ isFocused, onPress, IconComponent, label }) {
-  // Animate icon scale and opacity
-  const scale = useSharedValue(isFocused ? 1 : 0.9);
-  const opacity = useSharedValue(isFocused ? 1 : 0.7);
-
-  useEffect(() => {
-    scale.value = withSpring(isFocused ? 1 : 0.9, {
-      damping: 20,
-      stiffness: 250,
-    });
-    opacity.value = withSpring(isFocused ? 1 : 0.7, {
-      damping: 20,
-      stiffness: 250,
-    });
-  }, [isFocused]);
-
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityState={isFocused ? { selected: true } : {}}
-      onPress={onPress}
-      className="flex-1 items-center justify-center z-10"
-      activeOpacity={0.7}
-    >
-      <View className="items-center justify-center">
-        <Animated.View style={animatedIconStyle}>
-          <IconComponent
-            color={isFocused ? "#ffffff" : "#9ca3af"} // White when focused
-            strokeWidth={isFocused ? 1.5 : 2}
-            size={22}
-            pointerEvents="none"
-
-          />
-        </Animated.View>
-        {isFocused && (
-          <Text className="font-lexend-medium text-white tracking-tight text-[10px] mt-0.5">
-            {label}
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
+    </LinearGradient>
   );
 }
 
@@ -174,6 +150,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Explore" component={ExploreScreen} />
+      <Tab.Screen name="Post" component={PostsScreen} />
       <Tab.Screen name="Stats" component={StatsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -183,34 +160,55 @@ export default function TabNavigator() {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
-    height: 70,
-    position: "absolute",
-    bottom: 14,
-    left: 40,
-    right: 40,
-    borderRadius: 40,
-    borderWidth: 0.5,
-    borderColor: "hsl(0, 0%, 92%)", // Slightly lighter border
-    backgroundColor: "#ffffff", // Pure white background
-    shadowColor: "#000", // Standard black shadow for better visibility
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, // Softer opacity
-    shadowRadius: 12, // Larger radius for diffusion
-    elevation: 5,
+    borderTopWidth: 0.5,
+    borderTopColor: "rgba(156, 163, 175, 0.12)",
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 2,
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    height: 84,
+    // Subtle shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  slidingIndicator: {
-    position: "absolute",
-    height: 56,
-    width: 70, // Fixed width for the pill
-    // backgroundColor: "hsl(0, 0%, 100%)", // Removed in favor of LinearGradient
-    borderRadius: 18,
-    shadowColor: "hsl(0, 0%, 70%)",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3.84,
-    elevation: 5,
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+    // paddingTop: 8,
+  },
+  iconContainer: {
+    marginBottom: 2,
+  },
+  label: {
+    fontSize: 10,
+    letterSpacing: 0.2,
+    fontFamily: "Lexend-Regular", // Make sure you have Lexend font loaded
+  },
+  // --- Middle Button Styles ---
+  middleButtonContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+    // paddingTop: 8,
+  },
+  middleButtonCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: COLORS.middleBtnBg,
+    alignItems: "center",
+    justifyContent: "center",
+    // Warm glow shadow
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });
