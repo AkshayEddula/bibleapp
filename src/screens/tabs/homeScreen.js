@@ -221,10 +221,17 @@ export default function HomeScreen() {
       setLoading(true);
       setError(null);
 
-      // Fetch only "For You" verse (first verse) initially
+      // Fetch random "For You" verse
+      const { count } = await supabase
+        .from("bible_verses")
+        .select("*", { count: "exact", head: true });
+
+      const randomOffset = Math.floor(Math.random() * (count || 1));
+
       const { data: forYouVerse, error: forYouError } = await supabase
         .from("bible_verses")
         .select("*")
+        .range(randomOffset, randomOffset)
         .limit(1);
 
       if (forYouError) throw forYouError;
@@ -232,7 +239,7 @@ export default function HomeScreen() {
         setVerses(forYouVerse);
       }
 
-      const [likesResult, savesResult, countsResult, viewsResult] =
+      const [likesResult, savesResult, countsResult] =
         await Promise.all([
           supabase
             .from("verse_interactions")
@@ -245,11 +252,6 @@ export default function HomeScreen() {
             .eq("user_id", user.id)
             .eq("interaction_type", "save"),
           supabase.from("verse_interaction_counts").select("*"),
-          supabase
-            .from("verse_interactions")
-            .select("verse_id")
-            .eq("user_id", user.id)
-            .eq("interaction_type", "view"),
         ]);
 
       if (likesResult.data) {
@@ -260,9 +262,8 @@ export default function HomeScreen() {
         setSavedVerses(new Set(savesResult.data.map((item) => item.verse_id)));
       }
 
-      if (viewsResult.data) {
-        setViewedVerses(new Set(viewsResult.data.map((item) => item.verse_id)));
-      }
+      // We do NOT fetch past views anymore. 
+      // This allows recording a new view each time the user opens the app (new session).
 
       if (countsResult.data) {
         const countsMap = {};
@@ -702,7 +703,7 @@ export default function HomeScreen() {
 
 
       {/* Loading/Error States */}
-      {loading && page === 0 && (
+      {loading && verses.length === 0 && (
         <View className="items-center py-4">
           <ActivityIndicator color="#F9C846" />
           <Text className="text-gray-700 mt-2 font-lexend-light">
@@ -754,47 +755,60 @@ export default function HomeScreen() {
 
   const handleView = async (verseId) => {
     // Validation
-    if (!verseId) {
-      console.warn("handleView called with invalid verseId");
-      return;
-    }
+    if (!verseId || !user?.id) return;
 
-    if (!user?.id) {
-      console.warn("User not authenticated, skipping view recording");
-      return;
-    }
-
+    // Session-based de-duplication:
+    // If we've already recorded a view for this verse IN THIS SESSION, don't do it again.
     if (viewedVerses.has(verseId)) return;
 
-    // Add to local set immediately
+    // Add to local set immediately to prevent duplicate calls while scrolling
     setViewedVerses(prev => new Set(prev).add(verseId));
 
-    // Optimistic count update
-    setVerseCounts((prev) => ({
-      ...prev,
-      [verseId]: {
-        ...prev[verseId],
-        view_count: (prev[verseId]?.view_count || 0) + 1,
-      },
-    }));
+    // Optimistic count update REMOVED to prevent "jumping" UI.
+    // We now wait for server confirmation before updating the count.
 
-    try {
-      const { error } = await supabase.from("verse_interactions").insert({
-        user_id: user.id,
-        verse_id: verseId,
-        interaction_type: "view",
-      });
+    const recordView = async (retryCount = 0) => {
+      try {
+        const { error } = await supabase.from("verse_interactions").insert({
+          user_id: user.id,
+          verse_id: verseId,
+          interaction_type: "view",
+        });
 
-      if (error) {
-        // If error is duplicate key (code 23505), it's fine, we just ignore it.
-        if (error.code !== '23505') {
-          console.error("Error recording view:", error.message || error);
+        if (!error) {
+          // Success! Update the UI count now.
+          setVerseCounts((prev) => ({
+            ...prev,
+            [verseId]: {
+              ...prev[verseId],
+              view_count: (prev[verseId]?.view_count || 0) + 1,
+            },
+          }));
+        } else {
+          // Handle errors
+          if (error.code !== '23505') {
+            console.warn(`Supabase view recording error (Attempt ${retryCount + 1}):`, error.message);
+            // Retry on network errors or 5xx server errors
+            if (retryCount < 3 && (error.message?.includes('Network') || error.status >= 500)) {
+              setTimeout(() => recordView(retryCount + 1), 1000 * (retryCount + 1));
+            }
+          }
+        }
+      } catch (error) {
+        // Silent fail for views as requested by user ("no error what so ever")
+        // Only log if it's NOT a network error and NOT a duplicate error
+        if (!error.message?.includes('Network') && error.code !== '23505') {
+          console.warn(`View recording exception (Attempt ${retryCount + 1}):`, error);
+        }
+
+        // Retry silently on network exceptions
+        if (retryCount < 3 && error.message?.includes('Network')) {
+          setTimeout(() => recordView(retryCount + 1), 1000 * (retryCount + 1));
         }
       }
-    } catch (error) {
-      console.error("Error recording view:", error.message || error);
-      // We don't revert the optimistic update for views usually, as it's less critical than likes
-    }
+    };
+
+    recordView();
   };
 
   const renderItem = ({ item }) => {

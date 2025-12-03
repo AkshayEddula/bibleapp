@@ -46,12 +46,9 @@ export const VerseCard = ({
   const [commentError, setCommentError] = useState("");
   const [fetchError, setFetchError] = useState("");
 
-  // Trigger view recording on mount
-  useEffect(() => {
-    if (onView) {
-      onView();
-    }
-  }, []);
+  // View recording removed from VerseCard.
+  // Views are now only recorded in ReelsViewer when scrolled into view (50%+ visible).
+  // This prevents inflated view counts from the feed.
 
   const handleSave = () => {
     setLocalSaved(!localSaved);

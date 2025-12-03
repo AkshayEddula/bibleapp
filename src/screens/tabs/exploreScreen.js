@@ -232,6 +232,25 @@ export default function ExploreScreen() {
       return;
     }
 
+    // Handle Comment (Always Increment)
+    if (type === "comment") {
+      // Update count locally
+      setReelsVerses(prev => prev.map(v => {
+        if (v.id === verseId) {
+          const counts = v.verse_interaction_counts || {};
+          return {
+            ...v,
+            verse_interaction_counts: {
+              ...counts,
+              comment_count: (counts.comment_count || 0) + 1
+            }
+          };
+        }
+        return v;
+      }));
+      return; // Comment is already inserted in ReelsViewer
+    }
+
     // Handle Like & Save (Toggle)
     const isLike = type === "like";
     const isSave = type === "save";
@@ -255,7 +274,7 @@ export default function ExploreScreen() {
     setReelsVerses(prev => prev.map(v => {
       if (v.id === verseId) {
         const counts = v.verse_interaction_counts || {};
-        const countKey = `${type} _count`;
+        const countKey = `${type}_count`; // Fixed: removed space before _count
         return {
           ...v,
           verse_interaction_counts: {
@@ -287,6 +306,82 @@ export default function ExploreScreen() {
       setState(currentState);
       Alert.alert("Error", `Could not ${type} verse.`);
     }
+  };
+
+  const handleViewVerse = async (verseId) => {
+    if (!user?.id || !verseId) {
+      console.warn('⚠️ handleViewVerse called without user or verseId:', { userId: user?.id, verseId });
+      return;
+    }
+
+    console.log('🔵 handleViewVerse called for verse:', verseId);
+
+    const recordView = async (retryCount = 0) => {
+      try {
+        // First, check if user has already viewed this verse
+        console.log('🔍 Checking if user has already viewed this verse...');
+        const { data: existingView, error: checkError } = await supabase
+          .from("verse_interactions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("verse_id", verseId)
+          .eq("interaction_type", "view")
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('❌ Error checking existing view:', checkError);
+          return;
+        }
+
+        if (existingView) {
+          console.log('✓ User has already viewed this verse, skipping insert');
+          return;
+        }
+
+        // User hasn't viewed this verse yet, proceed with insert
+        console.log(`🔵 Inserting new view into DB (Attempt ${retryCount + 1})`);
+
+        const { error } = await supabase.from("verse_interactions").insert({
+          user_id: user.id,
+          verse_id: verseId,
+          interaction_type: "view",
+        });
+
+        if (!error) {
+          console.log('✅ View recorded successfully in DB for verse:', verseId);
+          // Success! Update the UI count in reelsVerses
+          setReelsVerses(prev => prev.map(v => {
+            if (v.id === verseId) {
+              const counts = v.verse_interaction_counts || {};
+              return {
+                ...v,
+                verse_interaction_counts: {
+                  ...counts,
+                  view_count: (counts.view_count || 0) + 1
+                }
+              };
+            }
+            return v;
+          }));
+        } else {
+          console.error('❌ DB Error recording view:', error);
+
+          // Retry on network errors
+          if (retryCount < 3 && (error.message?.includes('Network') || error.status >= 500)) {
+            setTimeout(() => recordView(retryCount + 1), 1000 * (retryCount + 1));
+          }
+        }
+      } catch (error) {
+        console.error('❌ Exception recording view:', error);
+
+        // Retry on network exceptions
+        if (retryCount < 3 && error.message?.includes('Network')) {
+          setTimeout(() => recordView(retryCount + 1), 1000 * (retryCount + 1));
+        }
+      }
+    };
+
+    recordView();
   };
 
   const fetchChapters = async (bookFilter = null) => {
@@ -950,6 +1045,7 @@ export default function ExploreScreen() {
         savedVerses={savedVerses}
         loading={reelsLoading}
         onInteraction={toggleInteraction}
+        onViewVerse={handleViewVerse}
       />
     </LinearGradient>
   );

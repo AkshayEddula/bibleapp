@@ -3,6 +3,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "./global.css";
+import ErrorBoundary from "./src/components/ErrorBoundary";
 import { AuthProvider } from "./src/context/AuthContext";
 import RootNavigator from "./src/navigation/RootNavigator";
 SplashScreen.preventAutoHideAsync();
@@ -44,9 +45,11 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <RootNavigator />
-      </NavigationContainer>
+      <ErrorBoundary>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </ErrorBoundary>
     </AuthProvider>
   );
 }

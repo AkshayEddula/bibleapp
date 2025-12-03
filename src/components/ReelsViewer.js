@@ -1,5 +1,5 @@
 import { ArrowLeft, Bookmark, Eye, Heart, MessageCircle, Send, Share2 } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -32,12 +32,16 @@ export default function ReelsViewer({
     likedVerses = new Set(),
     savedVerses = new Set(),
     onInteraction,
-    loading = false, // New prop
+    onViewVerse, // New prop for view recording
+    loading = false,
 }) {
     const insets = useSafeAreaInsets();
     const flatListRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const { user } = useAuth();
+
+    // Track viewed verses in this session to prevent duplicate view recording
+    const [viewedVerses, setViewedVerses] = useState(new Set());
 
     // Comment State
     const [showComments, setShowComments] = useState(false);
@@ -69,6 +73,7 @@ export default function ReelsViewer({
             // Modal closed, reset
             setIsInternalLoading(false);
             setHasLoadedOnce(false);
+            setViewedVerses(new Set()); // Clear viewed verses for next session
         }
     }, [visible]);
 
@@ -107,15 +112,43 @@ export default function ReelsViewer({
         }
     }, [visible, initialIndex]);
 
-    const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    // Use useCallback instead of useRef to ensure we have access to latest state
+    const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+        console.log('🔍 onViewableItemsChanged triggered, viewable items:', viewableItems.length);
+
         if (viewableItems.length > 0) {
             const index = viewableItems[0].index;
             setCurrentIndex(index);
             if (verses[index]) {
-                setActiveVerseId(verses[index].id);
+                const verseId = verses[index].id;
+                setActiveVerseId(verseId);
+
+                // Record view if this verse hasn't been viewed in this session
+                if (onViewVerse && !viewedVerses.has(verseId)) {
+                    console.log('📊 Recording view for verse:', verseId);
+                    console.log('📊 onViewVerse function exists:', !!onViewVerse);
+                    setViewedVerses(prev => new Set(prev).add(verseId));
+                    onViewVerse(verseId);
+                } else if (!onViewVerse) {
+                    console.warn('⚠️ onViewVerse prop not provided to ReelsViewer');
+                } else {
+                    console.log('✓ Verse already viewed in this session:', verseId);
+                }
             }
         }
-    }).current;
+    }, [verses, viewedVerses, onViewVerse]);
+
+    // Record view for initial verse when verses are loaded
+    useEffect(() => {
+        if (visible && verses.length > 0 && initialIndex >= 0 && initialIndex < verses.length) {
+            const initialVerse = verses[initialIndex];
+            if (initialVerse && onViewVerse && !viewedVerses.has(initialVerse.id)) {
+                console.log('📊 Recording initial view for verse:', initialVerse.id);
+                setViewedVerses(prev => new Set(prev).add(initialVerse.id));
+                onViewVerse(initialVerse.id);
+            }
+        }
+    }, [visible, verses.length, initialIndex]);
 
     // Set initial active verse
     useEffect(() => {
@@ -250,9 +283,12 @@ export default function ReelsViewer({
     };
 
     const renderItem = ({ item, index }) => {
-        const counts = item.verse_interaction_counts || {};
-        const isLiked = likedVerses.has(item.id);
-        const isSaved = savedVerses.has(item.id);
+        // IMPORTANT: Get the latest verse data from state, not the stale item prop
+        // This ensures counts update when parent state changes
+        const currentVerse = verses[index] || item;
+        const counts = currentVerse.verse_interaction_counts || {};
+        const isLiked = likedVerses.has(currentVerse.id);
+        const isSaved = savedVerses.has(currentVerse.id);
 
         return (
             <View style={{ width, height, backgroundColor: "black" }}>
@@ -273,17 +309,17 @@ export default function ReelsViewer({
                     style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 80 }}
                 >
                     <Text className="text-white font-lexend-bold text-3xl text-center leading-10 mb-6">
-                        "{item.content}"
+                        "{currentVerse.content}"
                     </Text>
                     <Text className="text-white/80 font-lexend-medium text-xl text-center mb-8">
-                        {item.book} {item.chapter}:{item.verse}
+                        {currentVerse.book} {currentVerse.chapter}:{currentVerse.verse}
                     </Text>
 
                     {/* Meaning / Context */}
-                    {item.meaning && (
+                    {currentVerse.meaning && (
                         <View className="bg-white/10 p-4 rounded-xl border border-white/10">
                             <Text className="text-white/90 font-lexend-light text-sm text-center leading-5">
-                                {item.meaning}
+                                {currentVerse.meaning}
                             </Text>
                         </View>
                     )}
@@ -294,24 +330,22 @@ export default function ReelsViewer({
                     className="absolute flex-row right-10 left-10 bottom-8 items-center gap-12"
                     style={{ paddingBottom: insets.bottom }}
                 >
-                    <Pressable
-                        className="items-center gap-1"
-                        hitSlop={10}
-                        onPress={() => onInteraction && onInteraction(item.id, 'like')}
-                    >
+                    {/* View Count - Display Only, Not Clickable */}
+                    <View className="items-center gap-1">
                         <Eye
                             size={30}
                             color="white"
                             fill="transparent"
                             strokeWidth={1.5}
-                            pointerEvents="none"
                         />
                         <Text className="text-white text-xs font-lexend-medium">{counts.view_count || 0}</Text>
-                    </Pressable>
+                    </View>
+
+                    {/* Like Button */}
                     <Pressable
                         className="items-center gap-1"
                         hitSlop={10}
-                        onPress={() => onInteraction && onInteraction(item.id, 'like')}
+                        onPress={() => onInteraction && onInteraction(currentVerse.id, 'like')}
                     >
                         <Heart
                             size={30}
@@ -323,11 +357,12 @@ export default function ReelsViewer({
                         <Text className="text-white text-xs font-lexend-medium">{counts.like_count || 0}</Text>
                     </Pressable>
 
+                    {/* Comment Button */}
                     <Pressable
                         className="items-center gap-1"
                         hitSlop={10}
                         onPress={() => {
-                            setActiveVerseId(item.id);
+                            setActiveVerseId(currentVerse.id);
                             setShowComments(true);
                         }}
                     >
@@ -335,10 +370,11 @@ export default function ReelsViewer({
                         <Text className="text-white text-xs font-lexend-medium">{counts.comment_count || 0}</Text>
                     </Pressable>
 
+                    {/* Save Button */}
                     <Pressable
                         className="items-center gap-1"
                         hitSlop={10}
-                        onPress={() => onInteraction && onInteraction(item.id, 'save')}
+                        onPress={() => onInteraction && onInteraction(currentVerse.id, 'save')}
                     >
                         <Bookmark
                             size={30}
@@ -350,10 +386,11 @@ export default function ReelsViewer({
                         <Text className="text-white text-xs font-lexend-medium">{counts.save_count || 0}</Text>
                     </Pressable>
 
+                    {/* Share Button */}
                     <Pressable
                         className="items-center gap-1"
                         hitSlop={10}
-                        onPress={() => handleShare(item)}
+                        onPress={() => handleShare(currentVerse)}
                     >
                         <Share2 size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
                         <Text className="text-white text-xs font-lexend-medium">{counts.share_count || 0}</Text>
