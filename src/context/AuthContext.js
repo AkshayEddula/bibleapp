@@ -1,7 +1,8 @@
-import { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "../lib/supabase";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Alert } from "react-native";
+import Purchases from "react-native-purchases";
+import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext();
 
@@ -174,11 +175,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+
   const logout = async () => {
     try {
       console.log("Logging out...");
 
-      // Sign out from Supabase (this will trigger onAuthStateChange)
+      // Sign out from RevenueCat first
+      try {
+        await Purchases.logOut();
+        console.log("Logged out from RevenueCat");
+      } catch (rcError) {
+        console.error("RevenueCat logout error:", rcError);
+      }
+
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
 
       if (error) {

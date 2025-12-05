@@ -1,6 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
-import { Zap } from "lucide-react-native";
+
+import { ZapIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { images } from "../utils";
@@ -124,7 +126,7 @@ const CelebrationModal = ({ visible, items = [], onClose }) => {
                                             <View key={index} className="flex-row items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
                                                 <View className="flex-row items-center gap-3 flex-1">
                                                     <View className={`p-2 rounded-full ${type === 'quest' ? 'bg-indigo-100' : 'bg-amber-100'}`}>
-                                                        <Zap size={16} color={type === 'quest' ? '#4F46E5' : '#D97706'} fill={type === 'quest' ? '#4F46E5' : '#D97706'} />
+                                                        <HugeiconsIcon icon={ZapIcon} size={16} color={type === 'quest' ? '#4F46E5' : '#D97706'} fill={type === 'quest' ? '#4F46E5' : '#D97706'} />
                                                     </View>
                                                     <Text className="font-lexend-medium text-gray-800 flex-1" numberOfLines={1}>
                                                         {item.title || item.name}
@@ -147,7 +149,7 @@ const CelebrationModal = ({ visible, items = [], onClose }) => {
                             {/* Total Reward Badge */}
                             <View className={`px-6 py-3 rounded-2xl mb-2 flex-row items-center gap-3 ${isMultiple ? "bg-amber-50" : (isQuest ? "bg-indigo-50" : "bg-amber-50")}`}>
                                 <View className={`p-2 rounded-full ${isMultiple ? "bg-amber-100" : (isQuest ? "bg-indigo-100" : "bg-amber-100")}`}>
-                                    <Zap size={24} color={isMultiple ? "#D97706" : (isQuest ? "#4F46E5" : "#D97706")} fill={isMultiple ? "#D97706" : (isQuest ? "#4F46E5" : "#D97706")} />
+                                    <HugeiconsIcon icon={ZapIcon} size={24} color={isMultiple ? "#D97706" : (isQuest ? "#4F46E5" : "#D97706")} fill={isMultiple ? "#D97706" : (isQuest ? "#4F46E5" : "#D97706")} />
                                 </View>
                                 <View>
                                     <Text className="text-[12px] font-lexend-medium text-gray-500 uppercase tracking-wider">

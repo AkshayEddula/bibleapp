@@ -1,11 +1,13 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
+import { StarsIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   GoogleSignin,
   isSuccessResponse,
 } from "@react-native-google-signin/google-signin";
 import { useNavigation } from "@react-navigation/native";
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
-import { Sparkles } from "lucide-react-native";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
@@ -23,7 +25,6 @@ import Animated, {
   withSequence,
   withTiming
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { images } from "../../utils";
 
@@ -114,9 +115,9 @@ export default function LoginScreen() {
       colors={["#FFFDF7", "#FFF9EB", "#FFF4D6"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={{ flex: 1 }}
+      style={{ flex: 1, paddingTop: Constants.statusBarHeight }}
     >
-      <SafeAreaView className="flex-1">
+      <View className="flex-1">
         <Animated.View style={[fadeStyle, { flex: 1 }]}>
 
           {/* Top Section: Character + Sparkles */}
@@ -130,12 +131,12 @@ export default function LoginScreen() {
               <Animated.View
                 style={[sparkleStyle, { position: "absolute", top: 25, right: 35 }]}
               >
-                <Sparkles size={34} color="#F59E0B" fill="#FCD34D" />
+                <HugeiconsIcon icon={StarsIcon} size={34} color="#F59E0B" fill="#FCD34D" />
               </Animated.View>
               <Animated.View
                 style={[sparkleStyle, { position: "absolute", bottom: 55, left: 30 }]}
               >
-                <Sparkles size={28} color="#F59E0B" fill="#FCD34D" />
+                <HugeiconsIcon icon={StarsIcon} size={28} color="#F59E0B" fill="#FCD34D" />
               </Animated.View>
             </Animated.View>
           </View>
@@ -238,7 +239,7 @@ export default function LoginScreen() {
           </View>
 
         </Animated.View>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }

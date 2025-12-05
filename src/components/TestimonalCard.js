@@ -1,11 +1,6 @@
+import { ArrowDown01Icon, Cancel01Icon, MessageFavourite01Icon, Sent02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Check,
-  ChevronDown,
-  MessageCircle,
-  Sparkles,
-  X
-} from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -583,7 +578,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
     >
       <View className="mb-8 mt-4">
         {/* Section Header */}
-        <View className="px-0 mb-4">
+        <View className="px-4 mb-4 border-b border-stone-200">
           <View className="flex-row items-center justify-between mb-3">
             <View>
               <Text className="text-xl font-lexend-semibold text-gray-800">
@@ -607,7 +602,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                   gap: 6,
                 }}
               >
-                <Sparkles size={16} color="white" strokeWidth={2.5} pointerEvents="none" />
+                <HugeiconsIcon icon={SparklesIcon} size={22} color="white" strokeWidth={1.5} pointerEvents="none" />
                 <Text className="text-white font-lexend-medium text-xs">
                   Share
                 </Text>
@@ -668,7 +663,8 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                           justifyContent: "center",
                         }}
                       >
-                        <Sparkles size={24} color="white" strokeWidth={2.5} pointerEvents="none" />
+                        <HugeiconsIcon icon={SparklesIcon} size={26} color="white" strokeWidth={1.5} pointerEvents="none" />
+
                       </LinearGradient>
                     </View>
                   </View>
@@ -887,7 +883,8 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                               backgroundColor: "#f5f5f4",
                             }}
                           >
-                            <MessageCircle
+                            <HugeiconsIcon
+                              icon={MessageFavourite01Icon}
                               size={18}
                               color="#78716c"
                               strokeWidth={2}
@@ -941,7 +938,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                       onPress={() => setShowAddModal(false)}
                       activeOpacity={0.6}
                     >
-                      <X size={24} color="#57534e" strokeWidth={2.5} pointerEvents="none" />
+                      <HugeiconsIcon pointerEvents="none" icon={Cancel01Icon} size={24} color="#57534e" strokeWidth={2.5} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -983,7 +980,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                         >
                           {selectedPrayerTitle || "Select a prayer request"}
                         </Text>
-                        <ChevronDown
+                        {/* <ChevronDown
                           size={22}
                           color="#78716c"
                           style={{
@@ -992,7 +989,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                             ],
                           }}
                           pointerEvents="none"
-                        />
+                        /> */}
                       </TouchableOpacity>
 
                       {/* Dropdown Menu */}
@@ -1076,7 +1073,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                                       None (No linked prayer)
                                     </Text>
                                     {newTestimony.prayer_request_id === null && (
-                                      <Check size={18} color="#f59e0b" />
+                                      <HugeiconsIcon icon={ArrowDown01Icon} pointerEvents="none" size={18} color="#f59e0b" />
                                     )}
                                   </View>
                                 </TouchableOpacity>
@@ -1158,7 +1155,8 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                                             </Text>
                                           </View>
                                           {selected && (
-                                            <Check size={18} color="#f59e0b" />
+
+                                            <HugeiconsIcon icon={ArrowDown01Icon} pointerEvents="none" size={18} color="#f59e0b" />
                                           )}
                                         </View>
                                       </TouchableOpacity>
@@ -1370,7 +1368,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                       Comments
                     </Text>
                     <TouchableOpacity onPress={() => setShowCommentsModal(false)}>
-                      <X size={24} color="#57534e" strokeWidth={2.5} pointerEvents="none" />
+                      <HugeiconsIcon icon={Cancel01Icon} size={24} color="#57534e" strokeWidth={2.5} pointerEvents="none" />
                     </TouchableOpacity>
                   </View>
                   <Text className="text-sm font-lexend-light text-gray-600">
@@ -1498,7 +1496,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                         {sendingComment ? (
                           <ActivityIndicator size="small" color="white" />
                         ) : (
-                          <MessageCircle size={20} color="white" pointerEvents="none" />
+                          <HugeiconsIcon pointerEvents="none" icon={Sent02Icon} size={20} color="white" strokeWidth={2} />
                         )}
                       </LinearGradient>
                     </TouchableOpacity>

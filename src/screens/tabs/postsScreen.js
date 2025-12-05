@@ -122,6 +122,6 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         flex: 1,
-        marginHorizontal: 24,
+        marginHorizontal: 16,
     },
 });

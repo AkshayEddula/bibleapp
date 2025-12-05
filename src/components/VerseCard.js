@@ -1,24 +1,27 @@
-import { LinearGradient } from "expo-linear-gradient";
 import {
-  Bookmark,
-  Eye,
-  Heart,
-  MessageCircle,
-  Send,
-  Share2,
-  X,
-} from "lucide-react-native";
+  Bookmark02Icon,
+  BubbleChatIcon,
+  Cancel01Icon,
+  FavouriteIcon,
+  QuoteUpIcon,
+  Sent02Icon,
+  SentIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -32,9 +35,8 @@ export const VerseCard = ({
   counts,
   onToggleLike,
   onToggleSave,
-  onView,
   onShare,
-  headerText = "Daily Verse", // Default header
+  headerText = "Daily Verse",
 }) => {
   const { user } = useAuth();
   const [localSaved, setLocalSaved] = useState(isSaved);
@@ -46,23 +48,10 @@ export const VerseCard = ({
   const [commentError, setCommentError] = useState("");
   const [fetchError, setFetchError] = useState("");
 
-  // View recording removed from VerseCard.
-  // Views are now only recorded in ReelsViewer when scrolled into view (50%+ visible).
-  // This prevents inflated view counts from the feed.
-
-  const handleSave = () => {
-    setLocalSaved(!localSaved);
-    if (onToggleSave) {
-      onToggleSave(verse.id);
-    }
-  };
-
-  // Sync isSaved prop with local state
   useEffect(() => {
     setLocalSaved(isSaved);
   }, [isSaved]);
 
-  // Fetch comments when modal opens
   useEffect(() => {
     if (showComments) {
       fetchComments();
@@ -72,51 +61,27 @@ export const VerseCard = ({
   const fetchComments = async () => {
     setLoadingComments(true);
     setFetchError("");
-
     try {
-      if (!verse?.id) {
-        throw new Error("Invalid verse data");
-      }
-
+      if (!verse?.id) throw new Error("Invalid verse");
       const { data, error } = await supabase
         .from("verse_interactions")
-        .select(
-          `
-          id,
-          comment,
-          created_at,
-          user_id,
-          profiles:user_id (
-            display_name,
-            email
-          )
-        `,
-        )
+        .select(`id, comment, created_at, user_id, profiles:user_id (display_name, email)`)
         .eq("verse_id", verse.id)
         .eq("interaction_type", "comment")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Format comments for display
-      const formattedComments = (data || []).map((item) => ({
+      setComments((data || []).map((item) => ({
         id: item.id,
-        user:
-          item.profiles?.display_name ||
-          item.profiles?.email?.split("@")[0] ||
-          "Anonymous",
+        user: item.profiles?.display_name || item.profiles?.email?.split("@")[0] || "Anonymous",
         text: item.comment || "",
         time: formatTimeAgo(new Date(item.created_at)),
         isCurrentUser: item.user_id === user?.id,
-      }));
-
-      setComments(formattedComments);
-      setFetchError("");
+      })));
     } catch (error) {
-      console.error("Error fetching comments:", error);
-      setFetchError("Failed to load comments. Please try again.");
-      setComments([]);
-      Alert.alert("Error", "Could not load comments.");
+      console.error(error);
+      setFetchError("Could not load comments.");
     } finally {
       setLoadingComments(false);
     }
@@ -124,43 +89,19 @@ export const VerseCard = ({
 
   const formatTimeAgo = (date) => {
     const seconds = Math.floor((new Date() - date) / 1000);
-
-    if (seconds < 60) return "Just now";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return `${Math.floor(seconds / 604800)}w ago`;
+    if (seconds < 60) return "Now";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    return `${Math.floor(seconds / 86400)}d`;
   };
 
   const handleAddComment = async () => {
-    // Clear previous errors
     setCommentError("");
-
-    // Validation
-    const trimmedComment = commentText.trim();
-
-    if (!trimmedComment) {
-      setCommentError("Comment cannot be empty");
-      return;
-    }
-
-    if (trimmedComment.length > COMMENT_MAX_LENGTH) {
-      setCommentError(`Comment must be ${COMMENT_MAX_LENGTH} characters or less`);
-      return;
-    }
-
-    if (!user?.id) {
-      setCommentError("You must be logged in to comment");
-      return;
-    }
-
-    if (!verse?.id) {
-      setCommentError("Invalid verse data");
-      return;
-    }
+    const trimmed = commentText.trim();
+    if (!trimmed) return setCommentError("Write something first");
+    if (!user?.id) return setCommentError("Please login");
 
     setSendingComment(true);
-
     try {
       const { data, error } = await supabase
         .from("verse_interactions")
@@ -168,406 +109,246 @@ export const VerseCard = ({
           user_id: user.id,
           verse_id: verse.id,
           interaction_type: "comment",
-          comment: trimmedComment,
+          comment: trimmed,
         })
-        .select(
-          `
-          id,
-          comment,
-          created_at,
-          user_id,
-          profiles:user_id (
-            display_name,
-            email
-          )
-        `,
-        )
+        .select(`id, comment, created_at, user_id, profiles:user_id (display_name, email)`)
         .single();
 
       if (error) throw error;
 
-      // Add new comment to the list
-      const newComment = {
+      setComments([{
         id: data.id,
-        user:
-          data.profiles?.display_name ||
-          data.profiles?.email?.split("@")[0] ||
-          "You",
+        user: data.profiles?.display_name || "You",
         text: data.comment,
-        time: "Just now",
+        time: "Now",
         isCurrentUser: true,
-      };
-
-      setComments([newComment, ...comments]);
+      }, ...comments]);
       setCommentText("");
-      setCommentError("");
     } catch (error) {
-      console.error("Error adding comment:", error);
-
-      // Provide user-friendly error messages
-      if (error.message?.includes("network")) {
-        setCommentError("Network error. Please check your connection.");
-      } else if (error.message?.includes("duplicate")) {
-        setCommentError("This comment was already posted.");
-      } else {
-        setCommentError("Failed to post comment. Please try again.");
-        Alert.alert("Error", "Failed to post comment.");
-      }
+      setCommentError("Failed to post.");
     } finally {
       setSendingComment(false);
     }
   };
 
-  // Handle comment text change with validation
-  const handleCommentTextChange = (text) => {
-    // Remove newlines to prevent multiline input
-    const singleLineText = text.replace(/[\r\n]+/g, ' ');
-
-    // Enforce character limit
-    if (singleLineText.length <= COMMENT_MAX_LENGTH) {
-      setCommentText(singleLineText);
-      setCommentError("");
-    } else {
-      setCommentError(`Maximum ${COMMENT_MAX_LENGTH} characters allowed`);
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `"${verse.content}" - ${verse.book} ${verse.chapter}:${verse.verse}`,
+      });
+      if (onShare) onShare(verse.id);
+    } catch (e) {
+      Alert.alert("Error", "Could not share");
     }
   };
 
-  const handleShare = async () => {
-    try {
-      const result = await Share.share({
-        message: `"${verse.content}" - ${verse.book} ${verse.chapter}:${verse.verse}\n\nShared via LumiVerse ✨`,
-      });
-
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          // shared with activity type of result.activityType
-          console.log("Shared via", result.activityType);
-        } else {
-          // shared
-          console.log("Shared successfully");
-        }
-
-        // Record the share interaction
-        if (onShare) {
-          onShare(verse.id);
-        }
-      } else if (result.action === Share.dismissedAction) {
-        // dismissed
-      }
-    } catch (error) {
-      console.error("Error sharing:", error.message);
-      Alert.alert("Error", "Could not share verse.");
-    }
+  const handleSave = () => {
+    setLocalSaved(!localSaved);
+    if (onToggleSave) onToggleSave(verse.id);
   };
 
   return (
     <>
+      {/* --- Main Card Container --- */}
       <View
-        className="bg-white rounded-[28px] mb-0 overflow-hidden border border-stone-200/40"
+        className="bg-white rounded-[24px] mb-2 mx-1 overflow-hidden relative border border-stone-200"
         style={{
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.06,
-          shadowRadius: 16,
-          elevation: 4,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          elevation: 3,
         }}
       >
-        {/* Verse Header with Gradient */}
+        {/* Top Gradient Bar - Thinner and subtler */}
         <LinearGradient
-          colors={["#fffbeb", "#fef3c7", "#fde68a"]}
+          colors={["#F59E0B", "#FEF3C7", "#FFFFFF"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{
-            paddingHorizontal: 24,
-            paddingVertical: 16,
-          }}
+          style={{ height: 4, width: "100%" }}
+        />
+
+        {/* Watermark Quote Icon */}
+        <View
+          className="absolute top-12 right-6 opacity-[0.04]"
+          pointerEvents="none"
         >
-          <View className="flex-row items-center gap-2">
-            <Text className="font-lexend-medium text-[17px] text-amber-800">
-              {headerText}
-            </Text>
-            <View className="w-1 h-5 bg-amber-400 rounded-full" />
-            <Text className="font-lexend-semibold text-amber-900 text-[14px]">
+          <HugeiconsIcon pointerEvents="none" icon={QuoteUpIcon} size={100} color="#000" />
+        </View>
+
+        {/* Content Section */}
+        <View className="px-6 pt-5 pb-4">
+
+          {/* Header Badge & Reference */}
+          <View className="mb-3">
+            <View className="flex-row items-center gap-2 mb-1.5">
+              <View className="w-1 h-3.5 bg-amber-400 rounded-full" />
+              <Text className="text-[11px] font-lexend-medium text-stone-500 uppercase tracking-wide">
+                {headerText}
+              </Text>
+            </View>
+            <Text className="text-[17px] font-lexend-semibold text-stone-800 tracking-tight">
               {verse.book} {verse.chapter}:{verse.verse}
             </Text>
           </View>
-        </LinearGradient>
 
-        {/* Verse Content */}
-        <View className="px-6 py-6">
-          <Text className="text-gray-800 leading-[25px] font-lexend text-[16px]">
+          {/* Verse Text - Reduced weight and size for elegance */}
+          <Text className="text-[16px] leading-[26px] font-lexend text-stone-700">
             "{verse.content}"
           </Text>
 
-          {/* Meaning Section */}
+          {/* Insight / Meaning - Clean border style */}
           {verse.meaning ? (
-            <View className="mt-5 bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-[20px] border border-indigo-100/60">
-              <View className="flex-row items-center gap-2 mb-2">
-                <View className="w-6 h-6 bg-indigo-100 rounded-full items-center justify-center">
-                  <Text className="text-[13px]">💡</Text>
-                </View>
-                <Text className="text-[13px] font-lexend-semibold text-indigo-800">
-                  Reflection
-                </Text>
-              </View>
-              <Text className="text-gray-700 font-lexend-light text-[14px] leading-[21px]">
+            <View className="mt-5 pt-4 border-t border-stone-100/80">
+              <Text className="text-[11px] font-lexend-medium text-stone-400 mb-1">
+                REFLECTION
+              </Text>
+              <Text className="text-[13px] leading-[20px] font-lexend-light text-stone-600">
                 {verse.meaning}
               </Text>
             </View>
           ) : null}
         </View>
 
-        {/* Action Bar */}
-        <View className="px-6 pb-5 pt-2 border-t border-stone-100/80">
-          <View className="flex-row items-center justify-between pt-3">
+        {/* Action Footer */}
+        <View className="px-4 py-3 border-t border-stone-100 flex-row justify-between items-center bg-stone-50/40">
+
+          {/* Left Actions */}
+          <View className="flex-row items-center gap-2">
             {/* Like Button */}
             <Pressable
               onPress={() => onToggleLike(verse.id)}
-              className="flex-row items-center gap-2 active:scale-95 px-3 py-2 rounded-full"
-              style={{
-                backgroundColor: isLiked ? "#fef2f2" : "transparent",
-              }}
+              className="flex-row items-center gap-1.5 px-2 py-2 rounded-full active:bg-stone-100"
             >
-              <Heart
-                size={21}
-                color={isLiked ? "#ef4444" : "#57534e"}
-                fill={isLiked ? "#ef4444" : "transparent"}
-                strokeWidth={2}
+              <HugeiconsIcon
+                icon={FavouriteIcon}
+                size={24} // Increased size
+                color={isLiked ? "#EF4444" : "#57534E"}
+                fill={isLiked ? "#EF4444" : "transparent"}
+                strokeWidth={1.5}
                 pointerEvents="none"
               />
-              <Text
-                className={`text-[14px] font-lexend-medium ${isLiked ? "text-red-500" : "text-gray-700"}`}
-              >
-                {counts.like_count}
-              </Text>
+              {counts.like_count > 0 && (
+                <Text className={`text-[13px] font-lexend ${isLiked ? "text-red-500 font-medium" : "text-stone-500"}`}>
+                  {counts.like_count}
+                </Text>
+              )}
             </Pressable>
 
             {/* Comment Button */}
             <Pressable
               onPress={() => setShowComments(true)}
-              className="flex-row items-center gap-2 active:scale-95 px-3 py-2 rounded-full"
+              className="flex-row items-center gap-1.5 px-2 py-2 rounded-full active:bg-stone-100"
             >
-              <MessageCircle size={21} color="#57534e" strokeWidth={2} pointerEvents="none" />
-              <Text className="text-[14px] font-lexend-medium text-gray-700">
-                {counts.comment_count || 0}
-              </Text>
+              <HugeiconsIcon pointerEvents="none" icon={BubbleChatIcon} size={24} color="#57534E" strokeWidth={1.5} />
+              {counts.comment_count > 0 && (
+                <Text className="text-[13px] font-lexend text-stone-500">
+                  {counts.comment_count}
+                </Text>
+              )}
             </Pressable>
+          </View>
 
-            {/* Share Button */}
-            <Pressable
-              onPress={handleShare}
-              className="flex-row items-center gap-2 active:scale-95 px-3 py-2 rounded-full"
-            >
-              <Share2 size={20} color="#57534e" strokeWidth={2} pointerEvents="none" />
-              <Text className="text-[14px] font-lexend-medium text-gray-700">
-                {counts.share_count || 0}
-              </Text>
+          {/* Right Actions */}
+          <View className="flex-row items-center gap-2">
+            <Pressable onPress={handleShare} className="p-2 rounded-full active:bg-stone-100">
+              <HugeiconsIcon pointerEvents="none" icon={SentIcon} size={24} color="#57534E" strokeWidth={1.5} />
             </Pressable>
-
-            {/* Save Button */}
-            <Pressable
-              onPress={handleSave}
-              className="active:scale-95 px-3 py-2 rounded-full"
-              style={{
-                backgroundColor: localSaved ? "#fffbeb" : "transparent",
-              }}
-            >
-              <Bookmark
-                size={21}
-                color={localSaved ? "#F59E0B" : "#57534e"}
+            <Pressable onPress={handleSave} className="p-2 rounded-full active:bg-stone-100">
+              <HugeiconsIcon pointerEvents="none" icon={Bookmark02Icon}
+                size={24}
+                color={localSaved ? "#F59E0B" : "#57534E"}
                 fill={localSaved ? "#F59E0B" : "transparent"}
-                strokeWidth={2}
-                pointerEvents="none"
+                strokeWidth={1.5}
               />
             </Pressable>
-
-            {/* View Count (Read Only) */}
-            <View className="flex-row items-center gap-2 px-3 py-2">
-              <Eye size={20} color="#9ca3af" strokeWidth={2} pointerEvents="none" />
-              <Text className="text-[13px] font-lexend-medium text-gray-400">
-                {counts.view_count || 0}
-              </Text>
-            </View>
           </View>
+
         </View>
       </View>
 
-      {/* Comments Modal */}
+      {/* --- Comments Modal --- */}
       <Modal
         visible={showComments}
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowComments(false)}
       >
-        <View className="flex-1 bg-black/60 justify-end">
-          <View
-            className="bg-white rounded-t-[32px] h-[80%]"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 5,
-            }}
-          >
-            {/* Modal Header */}
-            <View className="px-6 py-5 border-b border-stone-200">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-lg font-lexend-semibold text-gray-800">
-                  Comments
-                </Text>
-                <Pressable
-                  onPress={() => setShowComments(false)}
-                  className="w-8 h-8 items-center justify-center active:opacity-60"
-                >
-                  <X size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
-                </Pressable>
-              </View>
-              <Text className="text-sm font-lexend-light text-gray-600 mt-1">
-                {verse.book} {verse.chapter}:{verse.verse}
-              </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1 justify-end"
+        >
+          <Pressable
+            className="absolute inset-0 bg-black/20"
+            onPress={() => setShowComments(false)}
+          />
+
+          <View className="bg-white rounded-t-[28px] h-[75%] w-full overflow-hidden shadow-xl">
+            {/* Handle */}
+            <View className="items-center pt-3 pb-2 bg-white">
+              <View className="w-10 h-1 bg-stone-200 rounded-full" />
             </View>
 
-            {/* Comments List */}
-            <ScrollView className="flex-1 px-6 py-4">
+            {/* Header */}
+            <View className="px-6 pb-3 border-b border-stone-100 flex-row justify-between items-center bg-white">
+              <Text className="text-[17px] font-lexend-semibold text-stone-800">Discussion</Text>
+              <Pressable onPress={() => setShowComments(false)} className="bg-stone-50 p-1.5 rounded-full">
+                <HugeiconsIcon pointerEvents="none" icon={Cancel01Icon} size={20} color="#666" />
+              </Pressable>
+            </View>
+
+            {/* List */}
+            <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingVertical: 16 }}>
               {fetchError ? (
-                <View className="items-center justify-center py-12">
-                  <Text className="text-5xl mb-3">⚠️</Text>
-                  <Text className="text-base font-lexend-semibold text-red-600 mb-2">
-                    {fetchError}
-                  </Text>
-                  <Pressable
-                    onPress={fetchComments}
-                    className="mt-3 bg-gray-100 px-4 py-2 rounded-full active:scale-95"
-                  >
-                    <Text className="text-sm font-lexend-medium text-gray-700">
-                      Try Again
-                    </Text>
-                  </Pressable>
-                </View>
+                <Text className="text-center text-red-500 mt-8 font-lexend text-sm">{fetchError}</Text>
               ) : loadingComments ? (
-                <View className="items-center justify-center py-12">
-                  <ActivityIndicator color="#F9C846" size="large" />
-                  <Text className="text-sm font-lexend-light text-gray-500 mt-3">
-                    Loading comments...
-                  </Text>
-                </View>
+                <ActivityIndicator className="mt-8" color="#F59E0B" />
               ) : comments.length === 0 ? (
-                <View className="items-center justify-center py-12">
-                  <Text className="text-5xl mb-3">💬</Text>
-                  <Text className="text-base font-lexend-semibold text-gray-800">
-                    No comments yet
-                  </Text>
-                  <Text className="text-sm font-lexend-light text-gray-500 mt-1">
-                    Be the first to share your thoughts!
-                  </Text>
+                <View className="items-center mt-12 opacity-50">
+                  <HugeiconsIcon pointerEvents="none" icon={BubbleChatIcon} size={32} color="#a8a29e" />
+                  <Text className="text-stone-400 mt-2 font-lexend text-sm">No thoughts yet</Text>
                 </View>
               ) : (
-                comments.map((comment) => (
-                  <View key={comment.id} className="mb-5">
-                    <View className="flex-row items-start gap-3">
-                      <LinearGradient
-                        colors={["#8B5CF6", "#6366F1"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 100,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Text className="text-white font-lexend-semibold text-sm">
-                          {comment.user[0].toUpperCase()}
-                        </Text>
-                      </LinearGradient>
-                      <View className="flex-1">
-                        <View className="flex-row items-center gap-2 mb-1">
-                          <Text className="font-lexend-medium text-gray-800 text-sm">
-                            {comment.user}
-                          </Text>
-                          <Text className="font-lexend-light text-gray-400 text-xs">
-                            {comment.time}
-                          </Text>
-                        </View>
-                        <Text className="font-lexend-light text-gray-700 text-sm leading-5">
-                          {comment.text}
-                        </Text>
+                comments.map((c) => (
+                  <View key={c.id} className="mb-5 flex-row gap-3">
+                    <View className="w-8 h-8 rounded-full bg-stone-100 items-center justify-center border border-stone-200">
+                      <Text className="text-[11px] font-bold text-stone-500">{c.user[0].toUpperCase()}</Text>
+                    </View>
+                    <View className="flex-1 pt-0.5">
+                      <View className="flex-row items-baseline gap-2 mb-0.5">
+                        <Text className="text-[13px] font-lexend-medium text-stone-700">{c.isCurrentUser ? "You" : c.user}</Text>
+                        <Text className="text-[10px] text-stone-400 font-lexend">{c.time}</Text>
                       </View>
+                      <Text className="text-[14px] text-stone-600 font-lexend leading-[20px]">{c.text}</Text>
                     </View>
                   </View>
                 ))
               )}
             </ScrollView>
 
-            {/* Comment Input */}
-            <View className="px-6 py-4 border-t border-stone-200 bg-white">
-              {/* Error Message */}
-              {commentError ? (
-                <View className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
-                  <Text className="text-red-600 font-lexend-medium text-xs">
-                    {commentError}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Character Counter */}
-              <View className="flex-row items-center justify-between mb-2 px-1">
-                <Text className="text-xs font-lexend-light text-gray-400">
-                  Share your thoughts
-                </Text>
-                <Text className={`text-xs font-lexend-medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'}`}>
-                  {commentText.length}/{COMMENT_MAX_LENGTH}
-                </Text>
-              </View>
-
-              <View className="flex-row items-center gap-3">
+            {/* Input */}
+            <View className="p-4 border-t border-stone-100 pb-8 bg-white">
+              {commentError ? <Text className="text-red-500 text-[11px] mb-2 font-lexend">{commentError}</Text> : null}
+              <View className="flex-row gap-2 items-center">
                 <TextInput
+                  className="flex-1 bg-stone-50 border border-stone-200 rounded-full px-5 py-3 text-[14px] font-lexend text-stone-800"
+                  placeholder="Share your reflection..."
+                  placeholderTextColor="#a8a29e"
                   value={commentText}
-                  onChangeText={handleCommentTextChange}
-                  placeholder="Add a comment..."
-                  placeholderTextColor="#9ca3af"
-                  className="flex-1 bg-stone-50 rounded-full border border-stone-200 px-5 py-3 font-lexend-light text-sm text-gray-800"
+                  onChangeText={setCommentText}
                   maxLength={COMMENT_MAX_LENGTH}
-                  editable={!sendingComment}
-                  returnKeyType="send"
-                  onSubmitEditing={handleAddComment}
-                  blurOnSubmit={false}
                 />
                 <Pressable
                   onPress={handleAddComment}
                   disabled={!commentText.trim() || sendingComment}
-                  className="active:scale-95"
-                  style={{
-                    opacity: !commentText.trim() || sendingComment ? 0.5 : 1,
-                  }}
+                  className={`w-11 h-11 rounded-full items-center justify-center ${commentText.trim() ? 'bg-stone-800' : 'bg-stone-200'}`}
                 >
-                  <LinearGradient
-                    colors={["#f2f2f2", "#f1f1f1", "#fafafa"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 1,
-                      borderColor: "#e1e1e1",
-                    }}
-                  >
-                    {sendingComment ? (
-                      <ActivityIndicator size="small" color="#212121" />
-                    ) : (
-                      <Send size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
-                    )}
-                  </LinearGradient>
+                  {sendingComment ? <ActivityIndicator size="small" color="white" /> : <HugeiconsIcon pointerEvents="none" icon={Sent02Icon} size={20} color={commentText.trim() ? "white" : "#a8a29e"} variant="solid" />}
                 </Pressable>
               </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );

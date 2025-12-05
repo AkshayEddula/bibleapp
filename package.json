@@ -44,7 +44,7 @@
     "expo-updates": "~29.0.13",
     "expo-web-browser": "~15.0.9",
     "lottie-react-native": "~7.3.1",
-    "lucide-react-native": "^0.553.0",
+    "lucide-react-native": "^0.555.0",
     "nativewind": "^4.2.1",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "react": "19.1.0",

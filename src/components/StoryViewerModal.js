@@ -1,5 +1,4 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { X } from "lucide-react-native";
 import {
     Image,
     Modal,
@@ -10,6 +9,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useEffect, useRef, useState } from "react";
 
 export default function StoryViewerModal({
@@ -162,7 +164,7 @@ export default function StoryViewerModal({
                             </Text>
                         </View>
                         <Pressable onPress={onClose} className="p-2 bg-white/50 rounded-full z-10 shadow-sm">
-                            <X size={24} color="#1f2937" pointerEvents="none" />
+                            <HugeiconsIcon icon={Cancel01Icon} size={24} color="#1f2937" pointerEvents="none" />
                         </Pressable>
                     </View>
 

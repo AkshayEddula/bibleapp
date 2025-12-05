@@ -2,8 +2,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "./global.css";
-import ErrorBoundary from "./src/components/ErrorBoundary";
 import { AuthProvider } from "./src/context/AuthContext";
 import RootNavigator from "./src/navigation/RootNavigator";
 SplashScreen.preventAutoHideAsync();
@@ -39,17 +39,23 @@ export default function App() {
 
 
 
+
+
   if (!fontsLoaded && !fontError) {
     return null; // Or return a loading component
   }
 
   return (
-    <AuthProvider>
-      <ErrorBoundary>
+    <SafeAreaProvider>
+      <AuthProvider>
+        {/* <SubscriptionProvider> */}
+        {/* <ErrorBoundary> */}
         <NavigationContainer>
           <RootNavigator />
         </NavigationContainer>
-      </ErrorBoundary>
-    </AuthProvider>
+        {/* </ErrorBoundary> */}
+        {/* </SubscriptionProvider> */}
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

@@ -1,17 +1,8 @@
+import { ChampionIcon, CheckmarkCircle02Icon, Clock01Icon, Fire02Icon, LockIcon, MagicWand02Icon, Medal01Icon, ZapIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  CheckCircle2,
-  Clock,
-  Flame,
-  Lock,
-  Medal,
-  MedalIcon,
-  Star,
-  Trophy,
-  Zap
-} from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -59,7 +50,7 @@ const DetailsModal = ({ visible, item, onClose, type }) => {
         {item.icon_url ? (
           <Text className="text-[40px]">{item.icon_url}</Text>
         ) : (
-          <Medal size={48} color="#FFD700" />
+          <HugeiconsIcon icon={Medal01Icon} size={48} color="#FFD700" pointerEvents="none" />
         )}
       </View>
       <View className="absolute bottom-4 bg-black/40 px-3 py-1 rounded-full border border-white/20">
@@ -76,7 +67,7 @@ const DetailsModal = ({ visible, item, onClose, type }) => {
       style={{ padding: 32, alignItems: "center", justifyContent: "center" }}
     >
       <View className="w-20 h-20 rounded-full items-center justify-center bg-white/50">
-        <Trophy size={40} color="#4F46E5" />
+        <HugeiconsIcon icon={ChampionIcon} size={40} color="#4F46E5" pointerEvents="none" />
       </View>
     </LinearGradient>
   );
@@ -84,7 +75,7 @@ const DetailsModal = ({ visible, item, onClose, type }) => {
   const LockedHeader = () => (
     <View className="bg-gray-100 p-8 items-center justify-center h-[180px]">
       <View className="w-20 h-20 rounded-full items-center justify-center bg-gray-200">
-        <Lock size={32} color="#9CA3AF" />
+        <HugeiconsIcon icon={LockIcon} size={32} color="#9CA3AF" pointerEvents="none" />
       </View>
     </View>
   );
@@ -528,7 +519,7 @@ export default function StatsScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F9C846" />
           }
@@ -568,7 +559,7 @@ export default function StatsScreen() {
                       justifyContent: "center",
                     }}
                   >
-                    <Trophy size={32} color="#fff" strokeWidth={2} />
+                    <HugeiconsIcon icon={ChampionIcon} size={32} color="#fff" strokeWidth={2} pointerEvents="none" />
                   </LinearGradient>
                 </View>
 
@@ -615,7 +606,7 @@ export default function StatsScreen() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1">
                     <View className="flex-row items-center gap-2 mb-2">
-                      <Flame size={20} color="#F97316" strokeWidth={2} />
+                      <HugeiconsIcon icon={Fire02Icon} size={20} color="#F97316" strokeWidth={2} pointerEvents="none" />
                       <Text className="text-[16px] font-lexend-semibold text-gray-800">
                         Daily Streak
                       </Text>
@@ -692,7 +683,7 @@ export default function StatsScreen() {
                     }}
                   >
                     <View className="flex-row items-center gap-2 mb-2">
-                      <Zap size={18} color="#F59E0B" strokeWidth={2} />
+                      <HugeiconsIcon icon={ZapIcon} size={18} color="#F59E0B" strokeWidth={2} pointerEvents="none" />
                       <Text className="text-[13px] font-lexend-medium text-gray-600">
                         Total Points
                       </Text>
@@ -715,7 +706,7 @@ export default function StatsScreen() {
                     }}
                   >
                     <View className="flex-row items-center gap-2 mb-2">
-                      <Star size={18} color="#8B5CF6" strokeWidth={2} />
+                      <HugeiconsIcon icon={MagicWand02Icon} size={18} color="#8B5CF6" strokeWidth={2} pointerEvents="none" />
                       <Text className="text-[13px] font-lexend-medium text-gray-600">
                         Total XP
                       </Text>
@@ -914,7 +905,7 @@ function QuestCard({ quest, compact = false, onPress }) {
       {/* Rewards */}
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-1.5">
-          <Zap size={16} color="#F59E0B" strokeWidth={2} />
+          <HugeiconsIcon icon={ZapIcon} size={16} color="#F59E0B" strokeWidth={2} pointerEvents="none" />
           <Text className="text-[13px] font-lexend-semibold text-gray-700">
             +{quest.xp_reward} XP
           </Text>
@@ -922,14 +913,14 @@ function QuestCard({ quest, compact = false, onPress }) {
 
         {isComplete ? (
           <View className="flex-row items-center gap-1.5 bg-green-100 px-3 py-1.5 rounded-full">
-            <CheckCircle2 size={14} color="#10B981" strokeWidth={2.5} />
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} color="#10B981" strokeWidth={2.5} pointerEvents="none" />
             <Text className="text-[11px] font-lexend-semibold text-green-700">
               Complete
             </Text>
           </View>
         ) : (
           <View className="flex-row items-center gap-1.5 bg-amber-100 px-3 py-1.5 rounded-full">
-            <Clock size={14} color="#F59E0B" strokeWidth={2} />
+            <HugeiconsIcon icon={Clock01Icon} size={14} color="#F59E0B" strokeWidth={2} pointerEvents="none" />
             <Text className="text-[11px] font-lexend-semibold text-amber-700">
               In Progress
             </Text>
@@ -966,7 +957,7 @@ function BadgeCard({ badge, earnedAt, isLocked = false, onPress }) {
             {badge.icon_url ? (
               <Text className="text-[32px] opacity-40">{badge.icon_url}</Text>
             ) : (
-              <Lock size={28} color="#9CA3AF" />
+              <HugeiconsIcon icon={LockIcon} size={28} color="#9CA3AF" pointerEvents="none" />
             )}
           </View>
         </View>
@@ -1013,7 +1004,7 @@ function BadgeCard({ badge, earnedAt, isLocked = false, onPress }) {
           {badge.icon_url ? (
             <Text className="text-[32px]">{badge.icon_url}</Text>
           ) : (
-            <MedalIcon size={32} color="#FFD700" />
+            <HugeiconsIcon icon={Medal01Icon} size={32} color="#FFD700" />
           )}
         </View>
 

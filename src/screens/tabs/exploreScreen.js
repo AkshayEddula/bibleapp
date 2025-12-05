@@ -1,5 +1,6 @@
+import { ArrowRight01Icon, Bookmark01Icon, BookOpen01Icon, Cancel01Icon, FavouriteIcon, MessageFavourite01Icon, PlayCircle02Icon, Search01Icon, Share08Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowRight, Bookmark, BookOpen, Heart, MessageCircle, Play, Search, Share2, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -662,13 +663,13 @@ export default function ExploreScreen() {
       style={{ flex: 1 }}
     >
       <SafeAreaView className="flex-1" edges={['top']}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
           {/* Header & Search */}
           <View className="px-6 py-4 mb-2">
             <Text className="text-3xl font-lexend-medium text-gray-900 mb-4">Explore</Text>
 
             <View className="flex-row items-center bg-white border border-gray-200/60 rounded-[18px] px-5 py-5 shadow-sm">
-              <Search size={20} color="#9ca3af" />
+              <HugeiconsIcon icon={Search01Icon} size={20} color="#9ca3af" pointerEvents="none" />
               <TextInput
                 placeholder="Search verses, topics, or books..."
                 className="flex-1 ml-3 font-lexend-medium text-gray-900 text-[15px]"
@@ -682,7 +683,7 @@ export default function ExploreScreen() {
                   className="ml-2 active:opacity-50"
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <X size={18} color="#9ca3af" pointerEvents="none" />
+                  <HugeiconsIcon icon={Cancel01Icon} size={18} color="#9ca3af" pointerEvents="none" />
                 </Pressable>
               )}
             </View>
@@ -756,7 +757,7 @@ export default function ExploreScreen() {
                               <Text className="text-gray-400 font-lexend-light text-xs flex-1" numberOfLines={1}>
                                 {verse.content.substring(0, 30)}...
                               </Text>
-                              <ArrowRight size={14} color="#9ca3af" />
+                              <HugeiconsIcon icon={ArrowRight01Icon} size={14} color="#9ca3af" pointerEvents="none" />
                             </View>
                           </View>
                         </View>
@@ -772,10 +773,10 @@ export default function ExploreScreen() {
               <View className="px-6 mb-10">
                 <Text className="text-lg font-lexend-bold text-gray-900 mb-5">Trending Now</Text>
                 <View className="flex-row flex-wrap justify-between">
-                  {renderTrendingCard("Most Liked", trendingVerses.liked.length, <Heart size={22} color="white" fill="white" />, TRENDING_COLORS.liked, trendingVerses.liked)}
-                  {renderTrendingCard("Most Saved", trendingVerses.saved.length, <Bookmark size={22} color="white" fill="white" />, TRENDING_COLORS.saved, trendingVerses.saved)}
-                  {renderTrendingCard("Most Shared", trendingVerses.shared.length, <Share2 size={22} color="white" />, TRENDING_COLORS.shared, trendingVerses.shared)}
-                  {renderTrendingCard("Most Discussed", trendingVerses.commented.length, <MessageCircle size={22} color="white" />, TRENDING_COLORS.commented, trendingVerses.commented)}
+                  {renderTrendingCard("Most Liked", trendingVerses.liked.length, <HugeiconsIcon icon={FavouriteIcon} size={22} color="white" fill="white" pointerEvents="none" />, TRENDING_COLORS.liked, trendingVerses.liked)}
+                  {renderTrendingCard("Most Saved", trendingVerses.saved.length, <HugeiconsIcon icon={Bookmark01Icon} size={22} color="white" fill="white" pointerEvents="none" />, TRENDING_COLORS.saved, trendingVerses.saved)}
+                  {renderTrendingCard("Most Shared", trendingVerses.shared.length, <HugeiconsIcon icon={Share08Icon} size={22} color="white" pointerEvents="none" />, TRENDING_COLORS.shared, trendingVerses.shared)}
+                  {renderTrendingCard("Most Discussed", trendingVerses.commented.length, <HugeiconsIcon icon={MessageFavourite01Icon} size={22} color="white" pointerEvents="none" />, TRENDING_COLORS.commented, trendingVerses.commented)}
                 </View>
               </View>
 
@@ -783,7 +784,7 @@ export default function ExploreScreen() {
               <View className="px-6 mb-10">
                 <View className="flex-row justify-between items-center mb-5">
                   <Text className="text-lg font-lexend-bold text-gray-900">New Testament</Text>
-                  <ArrowRight size={20} color="#9ca3af" />
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={20} color="#9ca3af" pointerEvents="none" />
                 </View>
 
                 <View className="flex-row flex-wrap justify-between">
@@ -912,7 +913,7 @@ export default function ExploreScreen() {
               {/* Random Chapters Grid (Lumi Cards) */}
               <View className="px-6">
                 <View className="flex-row items-center mb-5 gap-2">
-                  <BookOpen size={22} color="#3b82f6" />
+                  <HugeiconsIcon icon={BookOpen01Icon} size={22} color="#3b82f6" />
                   <Text className="text-lg font-lexend-bold text-gray-900">Discover Chapters</Text>
                 </View>
 
@@ -982,7 +983,7 @@ export default function ExploreScreen() {
                                   borderWidth: 1.5,
                                   borderColor: 'rgba(255,255,255,0.2)'
                                 }}>
-                                  <Play size={16} color="white" fill="white" />
+                                  <HugeiconsIcon icon={PlayCircle02Icon} size={16} color="white" fill="white" />
                                 </View>
                               </View>
 

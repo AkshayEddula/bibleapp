@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import LoginScreen from "../screens/auth/login";
 import OnboardingScreen from "../screens/auth/onboarding";
 import OnboardingSteps from "../screens/auth/onboardingSteps"; // Add this import
+import PaywallScreen from "../screens/paywall/PayWallScreen";
 import TabNavigator from "./TavNavigator";
 
 const Stack = createNativeStackNavigator();
@@ -41,6 +42,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="Prayers" component={PrayerWallScreen} />
             <Stack.Screen name="Testimonies" component={TestimoniesScreen} />
+            <Stack.Screen name="Paywall" component={PaywallScreen} />
           </>
         )
       ) : (

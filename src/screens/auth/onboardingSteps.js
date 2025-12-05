@@ -1,13 +1,7 @@
+import { ArrowLeft02Icon, BookOpen01Icon, FavouriteIcon, PencilEdit02Icon, SparklesIcon, Target02Icon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  BookOpen,
-  Check,
-  ChevronLeft,
-  Edit3,
-  Heart,
-  Sparkles,
-  Target,
-} from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -23,7 +17,6 @@ import Animated, {
   useSharedValue,
   withTiming
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
@@ -199,7 +192,7 @@ export default function OnboardingSteps() {
                           </View>
                           {activeVersion === actualIndex && (
                             <View className="bg-amber-500 rounded-full p-1.5">
-                              <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                              <HugeiconsIcon icon={Tick01Icon} size={18} strokeWidth={2} color="#FFFFFF" />
                             </View>
                           )}
                         </View>
@@ -248,7 +241,7 @@ export default function OnboardingSteps() {
                           </View>
                           {activeVersion === actualIndex && (
                             <View className="bg-amber-500 rounded-full p-1.5">
-                              <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                              <HugeiconsIcon icon={Tick01Icon} size={18} strokeWidth={2} color="#FFFFFF" />
                             </View>
                           )}
                         </View>
@@ -321,7 +314,7 @@ export default function OnboardingSteps() {
                       {/* Check Icon */}
                       {!isCustomGoal && parseInt(target) === goal.value && (
                         <View className="bg-amber-500 rounded-full p-1.5">
-                          <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                          <HugeiconsIcon icon={Tick01Icon} size={18} strokeWidth={2} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
@@ -361,7 +354,7 @@ export default function OnboardingSteps() {
                         className={`w-12 h-12 rounded-full items-center justify-center mr-3.5 ${isCustomGoal ? 'bg-amber-100' : 'bg-gray-50'
                           }`}
                       >
-                        <Edit3 size={20} color={isCustomGoal ? '#F59E0B' : '#6B7280'} strokeWidth={2} />
+                        <HugeiconsIcon icon={PencilEdit02Icon} size={20} color={isCustomGoal ? '#F59E0B' : '#6B7280'} />
                       </View>
 
                       {/* Text Content */}
@@ -377,7 +370,7 @@ export default function OnboardingSteps() {
                       {/* Check Icon */}
                       {isCustomGoal && customValue && parseInt(customValue) > 0 && (
                         <View className="bg-amber-500 rounded-full p-1.5">
-                          <Check size={16} color="#FFFFFF" strokeWidth={3} />
+                          <HugeiconsIcon icon={Tick01Icon} size={18} strokeWidth={2} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
@@ -450,7 +443,7 @@ export default function OnboardingSteps() {
                   <View className="flex-row items-center justify-between mb-3">
                     <View className="flex-row items-center gap-2">
                       <View className={`w-9 h-9 rounded-full items-center justify-center ${selectCategories.length >= 3 ? 'bg-green-500' : 'bg-amber-500'}`}>
-                        <Heart size={18} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+                        <HugeiconsIcon icon={FavouriteIcon} size={18} color="#FFFFFF" fill="#FFFFFF" />
                       </View>
                       <Text className="text-[15px] font-lexend-bold text-gray-900">
                         Your Selection
@@ -557,7 +550,7 @@ export default function OnboardingSteps() {
                                 elevation: 3
                               }}
                             >
-                              <Check size={14} color="#FFFFFF" strokeWidth={3.5} />
+                              <HugeiconsIcon icon={Tick01Icon} size={22} strokeWidth={2} color="#FFFFFF" />
                             </View>
                           )}
                         </LinearGradient>
@@ -587,13 +580,13 @@ export default function OnboardingSteps() {
               >
                 <View className="flex-row items-start gap-3">
                   <View className="w-10 h-10 rounded-full bg-purple-500 items-center justify-center">
-                    <Sparkles size={20} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+                    <HugeiconsIcon icon={SparklesIcon} size={20} color="#FFFFFF" fill="#FFFFFF" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[15px] text-purple-900 font-lexend-bold mb-1">
+                    <Text className="text-[15px] text-purple-900 font-lexend-medium tracking-[-0.2px] mb-1">
                       Personalized Content
                     </Text>
-                    <Text className="text-[13px] text-purple-800 font-lexend-regular leading-5">
+                    <Text className="text-[13px] text-purple-800 font-lexend-light -leading-5">
                       We'll curate daily verses that match your interests and help you grow spiritually
                     </Text>
                   </View>
@@ -606,9 +599,9 @@ export default function OnboardingSteps() {
   };
 
   const stepTitles = [
-    { title: "Choose Your Bible", subtitle: "Select your preferred translation", icon: BookOpen },
-    { title: "Set Your Daily Goal", subtitle: "How many verses per day?", icon: Target },
-    { title: "Pick Your Topics", subtitle: "What matters most to you?", icon: Heart },
+    { title: "Choose Your Bible", subtitle: "Select your preferred translation", icon: BookOpen01Icon },
+    { title: "Set Your Daily Goal", subtitle: "How many verses per day?", icon: Target02Icon },
+    { title: "Pick Your Topics", subtitle: "What matters most to you?", icon: FavouriteIcon },
   ];
 
   return (
@@ -616,9 +609,9 @@ export default function OnboardingSteps() {
       colors={["#FFFDF7", "#FFF9EB", "#FFF4D6"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={{ flex: 1 }}
+      style={{ flex: 1, paddingTop: Constants.statusBarHeight }}
     >
-      <SafeAreaView className="flex-1">
+      <View className="flex-1">
         <View className="flex-1">
           {/* Header */}
           <View className="px-6 pt-2 pb-6">
@@ -627,7 +620,7 @@ export default function OnboardingSteps() {
               {step > 0 ? (
                 <Pressable onPress={BackHandler} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
                   <View className="flex-row items-center gap-1 py-2">
-                    <ChevronLeft size={22} color="#78350F" strokeWidth={2.5} />
+                    <HugeiconsIcon icon={ArrowLeft02Icon} size={22} color="#78350F" />
                     <Text className="text-[16px] font-lexend-semibold text-amber-900">
                       Back
                     </Text>
@@ -657,10 +650,10 @@ export default function OnboardingSteps() {
 
             {/* Title Section */}
             <View className="gap-2">
-              <Text className="text-[30px] font-lexend-bold text-gray-900 leading-tight">
+              <Text className="text-[30px] font-lexend-medium tracking-[-1.4px] text-gray-900 leading-tight">
                 {stepTitles[step].title}
               </Text>
-              <Text className="text-[15px] text-gray-600 font-lexend-light">
+              <Text className="text-[15px] text-gray-600 font-lexend-light tracking-[-0.2px]">
                 {stepTitles[step].subtitle}
               </Text>
             </View>
@@ -702,12 +695,12 @@ export default function OnboardingSteps() {
                 <Text className="text-[17px] font-lexend-bold text-amber-950">
                   {step === 2 ? "Start Reading 📖" : "Continue"}
                 </Text>
-                {step !== 2 && <Sparkles size={18} color="#78350F" fill="#FDE68A" />}
+                {step !== 2 && <HugeiconsIcon icon={SparklesIcon} size={26} strokeWidth={1.5} color="#78350F" />}
               </LinearGradient>
             </Pressable>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }

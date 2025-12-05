@@ -1,6 +1,8 @@
 // PrayerWallScreen.js
+import { Cancel01Icon, FavouriteIcon, MessageFavourite01Icon, Sent02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Heart, MessageCircle, Plus, Send, X } from "lucide-react-native";
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -485,7 +487,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                 justifyContent: "center",
               }}
             >
-              <Plus size={24} color="white" strokeWidth={2.5} pointerEvents="none" />
+              <HugeiconsIcon icon={SparklesIcon} size={26} color="white" strokeWidth={1.5} pointerEvents="none" />
             </LinearGradient>
           </View>
         </View>
@@ -508,7 +510,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
   );
 
   return (
-    <View className="flex-1 mb-8 mt-12 ">
+    <View className="flex-1 mb-8 mt-4 ">
       {/* Header */}
       <View className=" px-4 pt-0 pb-4 border-b border-stone-200">
         <View className="flex-row items-center justify-between">
@@ -537,10 +539,10 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                 gap: 8,
               }}
             >
-              <Plus size={20} color="white" strokeWidth={2.5} pointerEvents="none" />
-              <Text className="text-white font-lexend-medium text-sm">
+              <Text className="text-white font-lexend-medium text-sm tracking-tight">
                 Add Prayer
               </Text>
+              <HugeiconsIcon icon={SparklesIcon} size={22} color="white" strokeWidth={1.5} pointerEvents="none" />
             </LinearGradient>
           </Pressable>
         </View>
@@ -639,7 +641,8 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                             borderColor: "#e9d5ff",
                           }}
                         >
-                          <Heart
+                          <HugeiconsIcon
+                            icon={FavouriteIcon}
                             size={20}
                             color={prayer.isPraying ? "#a855f7" : "#78716c"}
                             fill={prayer.isPraying ? "#a855f7" : "transparent"}
@@ -669,7 +672,8 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                           onPress={() => openComments(prayer)}
                           className="flex-row items-center gap-2 px-3 py-2 rounded-full active:scale-95"
                         >
-                          <MessageCircle
+                          <HugeiconsIcon
+                            icon={MessageFavourite01Icon}
                             size={20}
                             color="#78716c"
                             strokeWidth={2}
@@ -717,7 +721,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                   onPress={() => setShowAddModal(false)}
                   className="w-8 h-8 items-center justify-center active:opacity-60"
                 >
-                  <X size={20} color="#57534e" pointerEvents="none" />
+                  <HugeiconsIcon icon={Cancel01Icon} size={20} color="#57534e" pointerEvents="none" />
                 </Pressable>
               </View>
             </View>
@@ -896,7 +900,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                   onPress={() => setShowCommentsModal(false)}
                   className="w-8 h-8 items-center justify-center active:opacity-60"
                 >
-                  <X size={20} color="#57534e" pointerEvents="none" />
+                  <HugeiconsIcon icon={Cancel01Icon} size={20} color="#57534e" pointerEvents="none" />
                 </Pressable>
               </View>
               <Text className="text-sm font-lexend-light text-gray-600">
@@ -1024,7 +1028,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                     {sendingComment ? (
                       <ActivityIndicator size="small" color="#212121" />
                     ) : (
-                      <Send size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
+                      <HugeiconsIcon icon={Sent02Icon} size={18} strokeWidth={2} color="#212121" pointerEvents="none" />
                     )}
                   </LinearGradient>
                 </Pressable>

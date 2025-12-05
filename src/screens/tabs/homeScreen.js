@@ -1,8 +1,10 @@
 // HomeScreen.js - Updated with Stories Header
+import { ChampionIcon, Fire02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useNavigation } from "@react-navigation/native";
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, Trophy } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,50 +15,52 @@ import {
   Text,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import CelebrationModal from "../../components/CelebrationModal";
-import PrayerWallScreen from "../../components/PrayerCard";
+import DailyQuestsPreview from "../../components/DailyQuestsPreview";
+import HomePagePrayerPreview from "../../components/HomePagePrayerPreview";
+import HomePageTestimonialPreview from "../../components/HomePageTestimonialPreview";
 import { StoryCircle } from "../../components/StoriesCard";
 import StoryViewerModal from "../../components/StoryViewerModal";
 import StreakModal from "../../components/StreakModal";
-import TestimoniesScreen from "../../components/TestimonalCard";
 import { VerseCard } from "../../components/VerseCard";
+import VerseReelsPreview from "../../components/VerseReelsPreview";
 import XPModal from "../../components/XPModal";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
 const { width } = Dimensions.get("window");
 
-const storyTags = [
-  {
-    id: 1,
-    tag: "Strength",
-    color: ["#FF9A9E", "#FECFEF"],
-    icon: "💪",
-    hasNew: true,
-  },
-  {
-    id: 2,
-    tag: "Faith",
-    color: ["#FEE8A0", "#F9C846"],
-    icon: "✨",
-    hasNew: true,
-  },
-  {
-    id: 3,
-    tag: "Love",
-    color: ["#FFD6E8", "#FF9ECD"],
-    icon: "💛",
-    hasNew: true,
-  },
-  {
-    id: 4,
-    tag: "Encouragement",
-    color: ["#C1E1C1", "#A8E6CF"],
-    icon: "🎯",
-    hasNew: true,
-  },
+// Emoji pool for random assignment to tags
+const EMOJI_POOL = [
+  "💪", "✨", "💛", "🎯", "🎓", "🙏", "❤️", "🌟", "🕊️", "💚",
+  "🔥", "🌈", "⭐", "💫", "🌺", "🦋", "🌸", "🎨", "🎭", "🎪"
 ];
+
+// Function to generate random gradient colors
+const generateRandomGradient = () => {
+  const gradients = [
+    ["#FF9A9E", "#FECFEF"],
+    ["#FEE8A0", "#F9C846"],
+    ["#FFD6E8", "#FF9ECD"],
+    ["#C1E1C1", "#A8E6CF"],
+    ["#A8EDEA", "#FED6E3"],
+    ["#FFE6FA", "#C3CDE6"],
+    ["#FBC2EB", "#A6C1EE"],
+    ["#FFDEE9", "#B5FFFC"],
+    ["#D4FC79", "#96E6A1"],
+    ["#FAD0C4", "#FFD1FF"],
+    ["#FEC163", "#DE4313"],
+    ["#92FFC0", "#002661"],
+    ["#EBBBA7", "#CFC7F8"],
+    ["#FFF1EB", "#ACE0F9"],
+  ];
+  return gradients[Math.floor(Math.random() * gradients.length)];
+};
+
+// Function to get random emoji
+const getRandomEmoji = () => {
+  return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+};
 
 // Achievement Toast Component - REMOVED
 
@@ -71,6 +75,8 @@ export default function HomeScreen() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("foryou"); // 'foryou' | 'verses'
   const [activeFilter, setActiveFilter] = useState("All");
+  const [storyTags, setStoryTags] = useState([]); // Verse tags from backend
+  const [loadingStoryTags, setLoadingStoryTags] = useState(true); // Loading state for tags
 
   const FILTERS = [
     "All",
@@ -216,6 +222,35 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchVerseTags = async () => {
+    try {
+      setLoadingStoryTags(true);
+      const { data, error } = await supabase
+        .from("verse_tags")
+        .select("id, name")
+        .limit(20); // Fetch up to 20 tags
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Transform tags with random emojis and colors
+        const transformedTags = data.map((tag) => ({
+          id: tag.id,
+          tag: tag.name,
+          color: generateRandomGradient(),
+          icon: getRandomEmoji(),
+          hasNew: true,
+        }));
+        setStoryTags(transformedTags);
+      }
+    } catch (err) {
+      console.error("Error fetching verse tags:", err);
+      // Silent fail - tags are optional UI enhancement
+    } finally {
+      setLoadingStoryTags(false);
+    }
+  };
+
   const initializeData = async () => {
     try {
       setLoading(true);
@@ -275,6 +310,9 @@ export default function HomeScreen() {
 
       // Fetch Streak Data
       await fetchStreakData();
+
+      // Fetch Verse Tags
+      await fetchVerseTags();
 
     } catch (err) {
       setError(err.message);
@@ -583,7 +621,7 @@ export default function HomeScreen() {
                 setXpModalVisible(true);
               }}
             >
-              <Trophy size={16} pointerEvents="none" color="#4F46E5" strokeWidth={2} />
+              <HugeiconsIcon icon={ChampionIcon} size={18} pointerEvents="none" color="#4F46E5" strokeWidth={1.5} />
               <Text className="text-indigo-700 font-lexend-bold text-xs">
                 Lvl {userStats?.current_level || 1}
               </Text>
@@ -596,7 +634,7 @@ export default function HomeScreen() {
                 setStreakModalVisible(true);
               }}
             >
-              <Flame size={16} color="#EA580C" fill="#EA580C" strokeWidth={2} pointerEvents="none" />
+              <HugeiconsIcon icon={Fire02Icon} size={18} pointerEvents="none" color="#EA580C" fill="#EA580C" strokeWidth={1.5} />
               <Text className="text-orange-700 font-lexend-bold text-xs">
                 {streakData.current}
               </Text>
@@ -615,19 +653,54 @@ export default function HomeScreen() {
             paddingVertical: 8,
           }}
         >
-          {storyTags.map((story) => (
-            <StoryCircle
-              key={story.id}
-              tag={story.tag}
-              color={story.color}
-              icon={story.icon}
-              hasNew={story.hasNew}
-              isLoading={loadingStoryTag === story.tag}
-              onPress={() => handleStoryPress(story.tag)}
-            />
-          ))}
+          {loadingStoryTags ? (
+            // Skeleton loaders while tags are loading
+            <>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <View key={i} className="items-center mr-4">
+                  <View
+                    style={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: 35,
+                      backgroundColor: '#E5E7EB',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
+                  >
+                    <View className="w-full h-full rounded-full items-center justify-center">
+                      <ActivityIndicator color="#9CA3AF" size="small" />
+                    </View>
+                  </View>
+                  <View className="mt-2 w-12 h-3 bg-gray-200 rounded" />
+                </View>
+              ))}
+            </>
+          ) : (
+            // Actual story tags
+            storyTags.map((story) => (
+              <StoryCircle
+                key={story.id}
+                tag={story.tag}
+                color={story.color}
+                icon={story.icon}
+                hasNew={story.hasNew}
+                isLoading={loadingStoryTag === story.tag}
+                onPress={() => handleStoryPress(story.tag)}
+              />
+            ))
+          )}
         </ScrollView>
       </View>
+
+
+
+      {/* <TouchableOpacity onPress={() => navigation.navigate('Paywall')}>
+        <Text>Upgrade to Premium</Text>
+      </TouchableOpacity> */}
 
       {/* Tab Selector */}
       <View className="flex-row px-6 mb-4 gap-6 border-b border-gray-100 pb-2">
@@ -730,25 +803,45 @@ export default function HomeScreen() {
     </>
   );
 
-  const renderFooter = () => {
-    if (activeTab === 'foryou') {
-      return (
-        <View className="px-5 pt-0 pb-4">
-          <PrayerWallScreen />
-          <TestimoniesScreen />
+  const renderFooter = useMemo(() => {
+    return (
+      <>
+        {/* For You Tab Footer - Always mounted but conditionally visible */}
+        <View className="pt-6 pb-4" style={{ display: activeTab === 'foryou' ? 'flex' : 'none' }}>
+          {/* Verse Reels Section */}
+          <VerseReelsPreview
+            navigation={navigation}
+            likedVerses={likedVerses}
+            savedVerses={savedVerses}
+            onInteraction={(verseId, type) => {
+              if (type === 'like') toggleLike(verseId);
+              else if (type === 'save') toggleSave(verseId);
+              else if (type === 'share') handleShare(verseId);
+            }}
+            onViewVerse={handleView}
+          />
+
+          {/* Daily Quests Section */}
+          <DailyQuestsPreview />
+
+          {/* Prayer and Testimonial Sections */}
+          <View className="px-5">
+            <HomePagePrayerPreview navigation={navigation} />
+            <HomePageTestimonialPreview navigation={navigation} />
+          </View>
         </View>
-      );
-    } else {
-      // Verses Tab Footer
-      return (
-        <View className="py-4 pb-20">
-          {hasMore && verses.length > 0 && (
-            <ActivityIndicator color="#F9C846" />
-          )}
-        </View>
-      );
-    }
-  };
+
+        {/* Verses Tab Footer */}
+        {activeTab === 'verses' && (
+          <View className="py-4 pb-20">
+            {hasMore && verses.length > 0 && (
+              <ActivityIndicator color="#F9C846" />
+            )}
+          </View>
+        )}
+      </>
+    );
+  }, [activeTab, hasMore, verses.length, navigation, likedVerses, savedVerses]);
 
   // Track viewed verses locally to prevent duplicate views in one session
   const [viewedVerses, setViewedVerses] = useState(new Set());
@@ -840,9 +933,12 @@ export default function HomeScreen() {
       colors={["#fdfcfb", "#f7f5f2", "#fdfcfb"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
+      style={{
+        flex: 1,
+        paddingTop: Constants.statusBarHeight
+      }}
     >
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <View className="flex-1" >
         <FlatList
           data={listData}
           renderItem={renderItem}
@@ -884,7 +980,7 @@ export default function HomeScreen() {
           onClose={() => setStoryViewerVisible(false)}
           stories={storyVerses}
         />
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }

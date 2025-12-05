@@ -1,4 +1,5 @@
-import { ArrowLeft, Bookmark, Eye, Heart, MessageCircle, Send, Share2 } from "lucide-react-native";
+import { ArrowLeft02Icon, Bookmark02Icon, BubbleChatIcon, Cancel01Icon, FavouriteIcon, Sent02Icon, SentIcon, ViewIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -332,7 +333,8 @@ export default function ReelsViewer({
                 >
                     {/* View Count - Display Only, Not Clickable */}
                     <View className="items-center gap-1">
-                        <Eye
+                        <HugeiconsIcon
+                            icon={ViewIcon}
                             size={30}
                             color="white"
                             fill="transparent"
@@ -347,7 +349,8 @@ export default function ReelsViewer({
                         hitSlop={10}
                         onPress={() => onInteraction && onInteraction(currentVerse.id, 'like')}
                     >
-                        <Heart
+                        <HugeiconsIcon
+                            icon={FavouriteIcon}
                             size={30}
                             color={isLiked ? "#ef4444" : "white"}
                             fill={isLiked ? "#ef4444" : "transparent"}
@@ -366,7 +369,7 @@ export default function ReelsViewer({
                             setShowComments(true);
                         }}
                     >
-                        <MessageCircle size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
+                        <HugeiconsIcon icon={BubbleChatIcon} size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
                         <Text className="text-white text-xs font-lexend-medium">{counts.comment_count || 0}</Text>
                     </Pressable>
 
@@ -376,7 +379,8 @@ export default function ReelsViewer({
                         hitSlop={10}
                         onPress={() => onInteraction && onInteraction(currentVerse.id, 'save')}
                     >
-                        <Bookmark
+                        <HugeiconsIcon
+                            icon={Bookmark02Icon}
                             size={30}
                             color={isSaved ? "#eab308" : "white"}
                             fill={isSaved ? "#eab308" : "transparent"}
@@ -392,7 +396,7 @@ export default function ReelsViewer({
                         hitSlop={10}
                         onPress={() => handleShare(currentVerse)}
                     >
-                        <Share2 size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
+                        <HugeiconsIcon icon={SentIcon} size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
                         <Text className="text-white text-xs font-lexend-medium">{counts.share_count || 0}</Text>
                     </Pressable>
                 </View>
@@ -494,7 +498,7 @@ export default function ReelsViewer({
                     style={{ top: insets.top + 10, zIndex: 100 }}
                     hitSlop={20}
                 >
-                    <ArrowLeft size={24} color="white" pointerEvents="none" />
+                    <HugeiconsIcon icon={ArrowLeft02Icon} size={24} color="white" pointerEvents="none" />
                 </Pressable>
 
                 {/* Comments Modal */}
@@ -513,7 +517,7 @@ export default function ReelsViewer({
                             <View className="px-6 py-4 border-b border-gray-100 flex-row justify-between items-center">
                                 <Text className="text-lg font-lexend-bold text-gray-900">Comments</Text>
                                 <Pressable onPress={() => setShowComments(false)} className="p-2">
-                                    <Text className="text-gray-500 text-xl">✕</Text>
+                                    <HugeiconsIcon icon={Cancel01Icon} size={24} color="black" pointerEvents="none" />
                                 </Pressable>
                             </View>
 
@@ -574,7 +578,7 @@ export default function ReelsViewer({
                                         {sendingComment ? (
                                             <ActivityIndicator size="small" color="white" />
                                         ) : (
-                                            <Send size={18} color="white" pointerEvents="none" />
+                                            <HugeiconsIcon icon={Sent02Icon} size={18} color="white" pointerEvents="none" />
                                         )}
                                     </Pressable>
                                 </View>

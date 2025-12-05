@@ -1,5 +1,6 @@
+import { Cancel01Icon, ChampionIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Trophy, X } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Dimensions, Modal, Pressable, Text, View } from "react-native";
 
@@ -92,7 +93,7 @@ export default function XPModal({ visible, onClose, stats }) {
                             onPress={onClose}
                             className="absolute top-4 right-4 bg-white/20 p-2 rounded-full z-10"
                         >
-                            <X size={20} color="#fff" pointerEvents="none" />
+                            <HugeiconsIcon icon={Cancel01Icon} size={20} color="#888888ff" pointerEvents="none" />
                         </Pressable>
 
                         <View className="flex-row items-center gap-4 mb-2 z-10">
@@ -100,7 +101,7 @@ export default function XPModal({ visible, onClose, stats }) {
                             <View className="relative">
                                 <View className="absolute inset-0 bg-white/30 blur-md rounded-full" />
                                 <View className="w-20 h-20 rounded-full bg-indigo-500 items-center justify-center border-4 border-white/30">
-                                    <Trophy size={40} color="#fff" fill="#fff" />
+                                    <HugeiconsIcon icon={ChampionIcon} size={40} color="#fff" />
                                 </View>
                             </View>
 

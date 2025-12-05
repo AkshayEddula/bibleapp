@@ -1,5 +1,6 @@
+import { Alert02Icon, Cancel01Icon, FavouriteIcon, Files02Icon, Logout02Icon, MessageFavourite01Icon, Settings01Icon, ShieldEnergyIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { FileText, Heart, Info, LogOut, MessageSquare, Settings, Shield, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Dimensions, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { Easing } from "react-native-reanimated";
@@ -536,14 +537,14 @@ export default function ProfileScreen() {
             <View className="flex-row items-center gap-2">
               {item.commentCount > 0 && (
                 <View className="flex-row items-center gap-1">
-                  <MessageSquare size={10} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
+                  <HugeiconsIcon icon={MessageFavourite01Icon} size={10} color="rgba(255,255,255,0.9)" strokeWidth={2.5} pointerEvents="none" />
                   <Text className="text-white text-[10px] font-lexend-bold">
                     {item.commentCount}
                   </Text>
                 </View>
               )}
               <View className="flex-row items-center gap-1">
-                <Heart size={10} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
+                <HugeiconsIcon icon={FavouriteIcon} size={10} color="rgba(255,255,255,0.9)" strokeWidth={2.5} pointerEvents="none" />
                 <Text className="text-white text-[10px] font-lexend-bold">
                   {isTestimonial ? item.likes_count : item.prayingCount}
                 </Text>
@@ -639,7 +640,7 @@ export default function ProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#6b7280" />
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         {/* Beautiful Header with Lumi */}
         <View style={{ marginBottom: 20 }}>
@@ -678,7 +679,7 @@ export default function ProfileScreen() {
               backdropFilter: 'blur(10px)',
             }}
           >
-            <Settings size={22} color="#78716c" strokeWidth={2} pointerEvents="none" />
+            <HugeiconsIcon icon={Settings01Icon} size={22} color="#78716c" strokeWidth={2} pointerEvents="none" />
           </Pressable>
 
           {/* Header Content */}
@@ -985,7 +986,7 @@ export default function ProfileScreen() {
                   onPress={() => setSettingsVisible(false)}
                   className="w-10 h-10 items-center justify-center bg-gray-100 rounded-full active:opacity-60"
                 >
-                  <X size={20} color="#374151" pointerEvents="none" />
+                  <HugeiconsIcon icon={Cancel01Icon} size={20} color="#374151" pointerEvents="none" />
                 </Pressable>
               </View>
             </View>
@@ -998,7 +999,7 @@ export default function ProfileScreen() {
                 <View className="bg-amber-50 rounded-2xl p-4 mb-3">
                   <View className="flex-row items-center">
                     <View className="w-12 h-12 bg-amber-100 rounded-full items-center justify-center mr-3">
-                      <Info size={20} color="#f59e0b" />
+                      <HugeiconsIcon icon={Alert02Icon} size={20} color="#f59e0b" />
                     </View>
                     <View className="flex-1">
                       <Text className="text-gray-900 font-lexend-semibold text-base">Version</Text>
@@ -1019,7 +1020,7 @@ export default function ProfileScreen() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center flex-1">
                       <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-3">
-                        <FileText size={20} color="#3b82f6" />
+                        <HugeiconsIcon icon={Files02Icon} size={20} color="#3b82f6" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-gray-900 font-lexend-semibold text-base">Terms of Service</Text>
@@ -1036,7 +1037,7 @@ export default function ProfileScreen() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center flex-1">
                       <View className="w-12 h-12 bg-purple-100 rounded-full items-center justify-center mr-3">
-                        <Shield size={20} color="#a855f7" />
+                        <HugeiconsIcon icon={ShieldEnergyIcon} size={20} color="#a855f7" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-gray-900 font-lexend-semibold text-base">Privacy Policy</Text>
@@ -1061,7 +1062,7 @@ export default function ProfileScreen() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center flex-1">
                       <View className="w-12 h-12 bg-red-100 rounded-full items-center justify-center mr-3">
-                        <LogOut size={20} color="#ef4444" />
+                        <HugeiconsIcon icon={Logout02Icon} size={20} color="#ef4444" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-red-600 font-lexend-bold text-base">Sign Out</Text>
@@ -1120,7 +1121,7 @@ export default function ProfileScreen() {
                 onPress={() => setDetailModalVisible(false)}
                 className="w-10 h-10 items-center justify-center bg-gray-50 rounded-full active:bg-gray-100"
               >
-                <X size={20} color="#374151" pointerEvents="none" />
+                <HugeiconsIcon icon={Cancel01Icon} size={20} color="#374151" pointerEvents="none" />
               </Pressable>
             </View>
 
@@ -1163,14 +1164,14 @@ export default function ProfileScreen() {
                 {/* Stats Row */}
                 <View className="flex-row items-center gap-6 mt-6 pt-4 border-t border-gray-100">
                   <View className="flex-row items-center gap-2">
-                    <Heart size={20} color="#ef4444" />
+                    <HugeiconsIcon icon={FavouriteIcon} size={20} color="#ef4444" pointerEvents="none" />
                     <Text className="text-gray-600 font-lexend-medium">
                       {selectedPost?.type === 'testimonial' ? (selectedPost?.likes_count || 0) : (selectedPost?.prayingCount || 0)}
                       {selectedPost?.type === 'testimonial' ? ' Likes' : ' Praying'}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-2">
-                    <MessageSquare size={20} color="#3b82f6" />
+                    <HugeiconsIcon icon={MessageFavourite01Icon} size={20} color="#3b82f6" pointerEvents="none" />
                     <Text className="text-gray-600 font-lexend-medium">
                       {selectedPost?.commentCount || 0} Comments
                     </Text>

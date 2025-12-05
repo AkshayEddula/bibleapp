@@ -1,5 +1,6 @@
+import { Cancel01Icon, ChampionIcon, CheckmarkCircle01Icon, Fire02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Calendar, CheckCircle2, Flame, Trophy, X } from "lucide-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, Text, View } from "react-native";
 import { images } from "../utils";
@@ -70,7 +71,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                             onPress={onClose}
                             className="absolute top-4 right-4 bg-white/30 p-2 rounded-full z-10 backdrop-blur-sm"
                         >
-                            <X size={20} color="#fff" pointerEvents="none" />
+                            <HugeiconsIcon icon={Cancel01Icon} size={20} color="#888888ff" pointerEvents="none" />
                         </Pressable>
 
                         <View className="flex-row items-center gap-6 mb-2 z-10">
@@ -89,7 +90,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                                     <Text className="text-white font-lexend-bold text-[56px] leading-[56px] shadow-sm" style={{ textShadowColor: 'rgba(0,0,0,0.1)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>
                                         {streak}
                                     </Text>
-                                    <Flame size={32} color="#fff" fill="#fff" style={{ opacity: 0.9 }} />
+                                    <HugeiconsIcon icon={Fire02Icon} size={32} color="#fff" fill="#fff" style={{ opacity: 0.9 }} />
                                 </View>
                                 <Text className="text-white font-lexend-medium text-[16px] opacity-90 uppercase tracking-widest shadow-sm">
                                     Day Streak
@@ -106,7 +107,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                         {/* Weekly Activity Card */}
                         <View className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-6">
                             <View className="flex-row items-center gap-2 mb-4">
-                                <Calendar size={18} color="#4B5563" />
+                                <HugeiconsIcon icon={Cancel01Icon} size={18} color="#4B5563" />
                                 <Text className="text-gray-700 font-lexend-bold text-[16px]">
                                     This Week
                                 </Text>
@@ -123,7 +124,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                                                     }`}
                                             >
                                                 {day.active ? (
-                                                    <Flame size={16} color="#fff" fill="#fff" />
+                                                    <HugeiconsIcon icon={Fire02Icon} size={16} color="#fff" fill="#fff" />
                                                 ) : (
                                                     <View className="w-2 h-2 rounded-full bg-gray-200" />
                                                 )}
@@ -142,7 +143,7 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
 
                         {/* Streak Quests */}
                         <View className="flex-row items-center gap-2 mb-4">
-                            <Trophy size={18} color="#4B5563" />
+                            <HugeiconsIcon icon={ChampionIcon} size={18} color="#4B5563" />
                             <Text className="text-gray-700 font-lexend-bold text-[16px]">
                                 Streak Quests
                             </Text>
@@ -155,9 +156,9 @@ const StreakModal = ({ visible, onClose, streak = 0, history = [], quests = [] }
                                         <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${quest.completed ? "bg-green-50" : "bg-orange-50"
                                             }`}>
                                             {quest.completed ? (
-                                                <CheckCircle2 size={24} color="#16A34A" />
+                                                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={24} color="#16A34A" />
                                             ) : (
-                                                <Flame size={24} color="#EA580C" />
+                                                <HugeiconsIcon icon={Fire02Icon} size={24} color="#EA580C" />
                                             )}
                                         </View>
 

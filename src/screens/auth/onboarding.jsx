@@ -1,6 +1,8 @@
+import { ArrowRight02Icon, Sent02Icon, StarsIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowRight, Send, Sparkles } from "lucide-react-native";
 import { useCallback } from "react";
 import { Dimensions, Image, Pressable, Text, View } from "react-native";
 import Animated, {
@@ -13,7 +15,6 @@ import Animated, {
   withSequence,
   withTiming
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { images } from "../../utils";
 
 const { width, height } = Dimensions.get("window");
@@ -164,13 +165,13 @@ export default function LumiOnboarding() {
   }));
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-white" style={{ paddingTop: Constants.statusBarHeight }}>
       {/* Top Bar (Skip Button) */}
-      <SafeAreaView className="absolute top-0 w-full z-50 flex-row justify-end px-6 pt-2">
+      <View className="absolute top-12 w-full z-50 flex-row justify-end px-6 pt-2">
         <Pressable onPress={skipToLogin} hitSlop={20}>
-          <Text className="text-gray-400 font-lexend-medium text-[16px]">Skip</Text>
+          <Text className="text-gray-400 font-lexend-medium tracking-tighter text-[16px]">Skip</Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
 
       {/* Main Slide Container */}
       <Animated.View style={[{ flexDirection: "row", width: width * slides.length, height: "100%" }, slideContainerStyle]}>
@@ -182,7 +183,7 @@ export default function LumiOnboarding() {
             end={{ x: 0.5, y: 1 }}
             style={{ width, flex: 1 }}
           >
-            <SafeAreaView className="flex-1 justify-between items-center pb-8 pt-12">
+            <View className="flex-1 justify-between items-center pb-8 pt-12">
 
               {/* Top Section: Character & Bubble */}
               <View className="items-center justify-center flex-1 w-full px-4">
@@ -208,7 +209,7 @@ export default function LumiOnboarding() {
                     }}
                   >
                     <View className="flex-row items-center justify-center gap-2">
-                      <Send size={18} color={slide.bubbleText} />
+                      <HugeiconsIcon icon={Sent02Icon} size={18} color={slide.bubbleText} />
                       <Text
                         style={{
                           fontSize: 15,
@@ -319,15 +320,15 @@ export default function LumiOnboarding() {
                       {slide.buttonText}
                     </Text>
                     {index === slides.length - 1 ? (
-                      <Sparkles size={20} color="#451a03" pointerEvents="none" />
+                      <HugeiconsIcon icon={StarsIcon} strokeWidth={1.5} size={26} color="#451a03" pointerEvents="none" />
                     ) : (
-                      <ArrowRight size={20} color="#451a03" pointerEvents="none" />
+                      <HugeiconsIcon icon={ArrowRight02Icon} strokeWidth={2} size={26} color="#451a03" pointerEvents="none" />
                     )}
                   </LinearGradient>
                 </Pressable>
               </Animated.View>
 
-            </SafeAreaView>
+            </View>
           </LinearGradient>
         ))}
       </Animated.View>
