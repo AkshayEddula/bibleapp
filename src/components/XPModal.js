@@ -1,4 +1,4 @@
-import { Cancel01Icon, ChampionIcon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, ChampionIcon, Layers01Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
@@ -8,22 +8,46 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function XPModal({ visible, onClose, stats }) {
     const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
     useEffect(() => {
         if (visible) {
             slideAnim.setValue(SCREEN_HEIGHT);
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                useNativeDriver: true,
-                damping: 20,
-                stiffness: 90,
-            }).start();
+            fadeAnim.setValue(0);
+            scaleAnim.setValue(0.9);
+
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    damping: 25,
+                    stiffness: 100,
+                }),
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    useNativeDriver: true,
+                    friction: 8,
+                }),
+            ]).start();
         } else {
-            Animated.timing(slideAnim, {
-                toValue: SCREEN_HEIGHT,
-                duration: 250,
-                useNativeDriver: true,
-            }).start();
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: SCREEN_HEIGHT,
+                    duration: 250,
+                    useNativeDriver: true,
+                })
+            ]).start();
         }
     }, [visible]);
 
@@ -47,98 +71,108 @@ export default function XPModal({ visible, onClose, stats }) {
             current: totalXP,
             next: nextLevelThreshold,
             progressInLevel,
-            totalRange
+            totalRange,
+            xpNeeded: Math.floor(totalRange - progressInLevel)
         };
     };
 
     const levelProgress = calculateLevelProgress();
+    const currentLevel = stats?.current_level || 1;
 
     if (!visible) return null;
 
     return (
         <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-            <View
-                style={{
-                    flex: 1,
-                    backgroundColor: "rgba(0,0,0,0.5)",
-                    justifyContent: "flex-end",
-                }}
+            {/* Overlay */}
+            <Animated.View
+                style={{ opacity: fadeAnim }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             >
-                <Pressable style={{ position: "absolute", inset: 0 }} onPress={onClose} />
+                <Pressable className="flex-1" onPress={onClose} />
+            </Animated.View>
 
+            {/* Modal Container */}
+            <View className="flex-1 justify-end pointer-events-box-none">
                 <Animated.View
                     style={{
-                        width: "100%",
-                        backgroundColor: "white",
-                        borderTopLeftRadius: 32,
-                        borderTopRightRadius: 32,
-                        transform: [{ translateY: slideAnim }],
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: -4 },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 16,
-                        elevation: 20,
-                        paddingBottom: 40, // Safe area padding
+                        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+                        backgroundColor: "#FFFFFF",
+                        borderTopLeftRadius: 36,
+                        borderTopRightRadius: 36,
+                        paddingBottom: 40,
                         overflow: "hidden",
                     }}
                 >
-                    {/* Header */}
-                    <LinearGradient
-                        colors={["#E0E7FF", "#C7D2FE"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{ padding: 24, alignItems: "center", position: "relative", overflow: 'visible' }}
-                    >
-                        <Pressable
-                            onPress={onClose}
-                            className="absolute top-4 right-4 bg-white/20 p-2 rounded-full z-10"
-                        >
-                            <HugeiconsIcon icon={Cancel01Icon} size={20} color="#888888ff" pointerEvents="none" />
-                        </Pressable>
+                    {/* --- HERO HEADER --- */}
+                    <View className="bg-indigo-50/80 pb-8 pt-6 rounded-b-[40px] relative overflow-hidden">
 
-                        <View className="flex-row items-center gap-4 mb-2 z-10">
-                            {/* Trophy Icon */}
-                            <View className="relative">
-                                <View className="absolute inset-0 bg-white/30 blur-md rounded-full" />
-                                <View className="w-20 h-20 rounded-full bg-indigo-500 items-center justify-center border-4 border-white/30">
-                                    <HugeiconsIcon icon={ChampionIcon} size={40} color="#fff" />
-                                </View>
-                            </View>
+                        {/* Decorative Blobs */}
+                        <View className="absolute -top-10 -right-10 w-40 h-40 bg-purple-200/40 rounded-full blur-3xl" />
+                        <View className="absolute top-10 -left-10 w-32 h-32 bg-indigo-200/40 rounded-full blur-3xl" />
 
-                            <View>
-                                <Text className="text-indigo-900 font-lexend-bold text-[48px] leading-[48px] shadow-sm">
-                                    {stats?.current_level || 1}
-                                </Text>
-                                <Text className="text-indigo-800 font-lexend-medium text-[14px] opacity-90 uppercase tracking-widest shadow-sm">
-                                    Current Level
+                        {/* Top Bar */}
+                        <View className="flex-row justify-between items-center px-6 mb-4">
+                            <View className="bg-white/60 px-3 py-1.5 rounded-full flex-row items-center border border-indigo-100/50">
+                                <HugeiconsIcon icon={Layers01Icon} size={12} color="#6366F1" />
+                                <Text className="text-indigo-900 font-lexend-bold text-xs ml-1.5 uppercase tracking-wide">
+                                    Level Up
                                 </Text>
                             </View>
+
+                            <Pressable
+                                onPress={onClose}
+                                className="bg-white/80 w-8 h-8 items-center justify-center rounded-full border border-gray-100 shadow-sm active:bg-gray-100"
+                            >
+                                <HugeiconsIcon icon={Cancel01Icon} size={16} color="#71717A" pointerEvents="none" />
+                            </Pressable>
                         </View>
 
-                        {/* Background decorative elements */}
-                        <View className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-xl" />
-                        <View className="absolute top-0 left-0 w-24 h-24 bg-white/20 rounded-full blur-xl" />
-                    </LinearGradient>
+                        {/* Centerpiece */}
+                        <View className="items-center justify-center mt-2">
+                            {/* Trophy Container */}
+                            <View className="relative mb-4">
+                                {/* Glow behind trophy */}
+                                <View className="absolute inset-0 bg-indigo-500/30 blur-2xl rounded-full scale-110" />
+                                <LinearGradient
+                                    colors={['#818CF8', '#4F46E5']}
 
-                    <View className="p-6">
-                        {/* Level Progress */}
-                        <Text className="text-gray-800 font-lexend-bold text-[18px] mb-4">
-                            Level Progress
-                        </Text>
+                                    style={{
+                                        borderRadius: 24, width: 120, height: 120, borderRadius: 60, justifyContent: "center", alignItems: "center",
+                                        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84,
+                                        elevation: 5
+                                    }}
+                                >
+                                    <HugeiconsIcon icon={ChampionIcon} size={42} strokeWidth={1} color="#FFFFFF" fill="#e6e6e6ff" />
+                                </LinearGradient>
+                            </View>
 
-                        <View className="bg-stone-50 rounded-2xl p-5 mb-6 border border-stone-200">
-                            <View className="flex-row items-center justify-between mb-2">
-                                <Text className="text-[13px] font-lexend-medium text-gray-600">
-                                    Progress to Level {(stats?.current_level || 1) + 1}
+                            {/* Level Number */}
+                            <Text className="text-indigo-950 font-lexend-medium text-[56px] leading-[56px] tracking-[-4px] w-full text-center">
+                                Level {currentLevel}
+                            </Text>
+                            <Text className="text-indigo-400 font-lexend-medium text-sm mt-1">
+                                Master of Consistency
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* --- BODY CONTENT --- */}
+                    <View className="px-6 -mt-6">
+                        {/* Progress Card */}
+                        <View className="bg-white rounded-3xl p-5 shadow-lg shadow-indigo-100/50 border border-indigo-50">
+                            <View className="flex-row justify-between items-end mb-3">
+                                <Text className="text-gray-500 font-lexend-bold text-xs uppercase tracking-wider">
+                                    XP Progress
                                 </Text>
-                                <Text className="text-[13px] font-lexend-bold text-indigo-600">
+                                <Text className="text-indigo-600 font-lexend-bold text-lg">
                                     {Math.floor(levelProgress.percentage)}%
                                 </Text>
                             </View>
 
-                            <View className="h-4 bg-white rounded-full overflow-hidden border border-stone-200 mb-2">
+                            {/* Bar Track */}
+                            <View className="h-4 bg-gray-100 rounded-full overflow-hidden relative">
                                 <LinearGradient
-                                    colors={["#8B5CF6", "#6366F1"]}
+                                    colors={["#818CF8", "#4F46E5"]}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={{
@@ -149,42 +183,63 @@ export default function XPModal({ visible, onClose, stats }) {
                                 />
                             </View>
 
-                            <Text className="text-[12px] font-lexend text-gray-500 text-center">
-                                <Text className="font-lexend-bold text-gray-900">{Math.floor(levelProgress.totalRange - levelProgress.progressInLevel).toLocaleString()}</Text> XP needed for next level
-                            </Text>
+                            <View className="mt-3 flex-row justify-between items-center">
+                                <Text className="text-gray-400 font-lexend-medium text-xs">
+                                    Current
+                                </Text>
+                                <Text className="text-gray-800 font-lexend-semibold text-xs">
+                                    <Text className="text-indigo-600">{levelProgress.xpNeeded.toLocaleString()}</Text> XP to Level {currentLevel + 1}
+                                </Text>
+                            </View>
                         </View>
 
                         {/* Stats Grid */}
-                        <View className="flex-row gap-3 mb-6">
-                            <View className="flex-1 bg-amber-50 rounded-2xl p-4 border border-amber-100 items-center">
-                                <Text className="text-[12px] font-lexend-medium text-amber-600 mb-1 uppercase tracking-wider">Total XP</Text>
-                                <Text className="text-[24px] font-lexend-bold text-amber-900">
+                        <View className="flex-row gap-4 mt-6">
+                            {/* Total XP Card */}
+                            <View className="flex-1 bg-gray-50 rounded-2xl p-4 border border-gray-100 items-start">
+                                <View className="bg-amber-100 p-1.5 rounded-lg mb-2">
+                                    <HugeiconsIcon icon={SparklesIcon} size={16} color="#D97706" fill="#D97706" />
+                                </View>
+                                <Text className="text-[20px] font-lexend-bold text-gray-900">
                                     {stats.total_xp?.toLocaleString()}
                                 </Text>
+                                <Text className="text-xs font-lexend-medium text-gray-400">
+                                    Total XP Earned
+                                </Text>
                             </View>
-                            <View className="flex-1 bg-indigo-50 rounded-2xl p-4 border border-indigo-100 items-center">
-                                <Text className="text-[12px] font-lexend-medium text-indigo-600 mb-1 uppercase tracking-wider">Next Level</Text>
-                                <Text className="text-[24px] font-lexend-bold text-indigo-900">
+
+                            {/* Next Level Target Card */}
+                            <View className="flex-1 bg-gray-50 rounded-2xl p-4 border border-gray-100 items-start">
+                                <View className="bg-indigo-100 p-1.5 rounded-lg mb-2">
+                                    <HugeiconsIcon icon={Layers01Icon} size={16} color="#4F46E5" />
+                                </View>
+                                <Text className="text-[20px] font-lexend-bold text-gray-900">
                                     {levelProgress.next?.toLocaleString()}
+                                </Text>
+                                <Text className="text-xs font-lexend-medium text-gray-400">
+                                    Next Milestone
                                 </Text>
                             </View>
                         </View>
 
-                        <Pressable
-                            onPress={onClose}
-                            className="w-full active:scale-95"
-                        >
-                            <LinearGradient
-                                colors={["#4F46E5", "#4338CA"]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={{ borderRadius: 16, paddingVertical: 16, width: "100%" }}
+                        {/* Footer Button */}
+                        <View className="mt-8">
+                            <Pressable
+                                onPress={onClose}
+                                className="w-full active:scale-[0.98] transition-transform"
                             >
-                                <Text className="text-white text-center font-lexend-bold text-[16px]">
-                                    Keep Going!
-                                </Text>
-                            </LinearGradient>
-                        </Pressable>
+                                <LinearGradient
+                                    colors={["#4F46E5", "#3730A3"]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={{ borderRadius: 20, paddingVertical: 18, width: "100%", alignItems: 'center' }}
+                                >
+                                    <Text className="text-white font-lexend-bold text-lg tracking-wide">
+                                        Keep Going!
+                                    </Text>
+                                </LinearGradient>
+                            </Pressable>
+                        </View>
                     </View>
                 </Animated.View>
             </View>

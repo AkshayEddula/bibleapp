@@ -1,16 +1,17 @@
-import { ArrowRight02Icon, Cancel01Icon, PlusSignIcon, Sent02Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight02Icon, BubbleChatIcon, Cancel01Icon, PlusSignIcon, Sent02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     Text,
     TextInput,
-    View,
+    View
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -324,85 +325,47 @@ const HomePageTestimonialPreview = ({ navigation }) => {
     if (loading) {
         return (
             <View className="py-8 items-center">
-                <ActivityIndicator color="#F9C846" />
+                {/* Updated loading indicator color to match new amber scheme */}
+                <ActivityIndicator color="#B45309" />
             </View>
         );
     }
 
     return (
         <>
-            <View className="mb-4 mt-4">
-                {/* Premium Header */}
-                <View className="px-0 mb-4">
-                    <LinearGradient
-                        colors={["#ffffff", "#fbfaf5", "#ffffff"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{
-                            borderRadius: 18,
-                            padding: 20,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            borderColor: "#f1e8d1",
-                            borderWidth: 0.8,
-                            justifyContent: "space-between",
-                            shadowColor: "#000",
-                            shadowOffset: {
-                                width: 0,
-                                height: 2,
-                            },
-                            shadowOpacity: 0.25,
-                            shadowRadius: 3.84,
-                            elevation: 5,
-                        }}
+            <View className="mb-0 mt-8">
+                {/* Updated Header: Using Prayer Wall's clean Stone/Amber design */}
+                <View className="flex-row items-center justify-between mb-6 px-[12px]">
+                    {/* Left: Title & Subtitle */}
+                    <View>
+                        <Text className="text-[22px] font-lexend-semibold tracking-[-0.5px] text-gray-900">
+                            Testimony Wall
+                        </Text>
+                        <Text className="text-[12px] font-lexend mt-1 text-gray-500">
+                            Stories of faith & gratitude
+                        </Text>
+                    </View>
+
+                    {/* Right: "Add Story" styled like the 'ADD PRAYER' button */}
+                    <Pressable
+                        onPress={navigateToPosts}
+                        className="active:opacity-70"
                     >
-                        <View>
-                            <View className="flex-row items-center gap-2 mb-1">
-                                <Text className="text-2xl">✨</Text>
-                                <Text className="text-xl font-lexend-bold text-gray-900">
-                                    Testimonials
-                                </Text>
-                            </View>
-                            <Text className="text-xs font-lexend text-gray-600">
-                                Stories of faith & gratitude
+                        <View className="flex-row items-center gap-1.5 px-3.5 py-3 rounded-full border bg-amber-50 border-amber-200">
+                            <HugeiconsIcon icon={PlusSignIcon} size={14} color="#B45309" strokeWidth={2.5} />
+                            <Text className="text-[11px] font-lexend-semibold uppercase tracking-wider text-amber-700">
+                                ADD STORY
                             </Text>
                         </View>
-
-                        <Pressable
-                            onPress={navigateToPosts}
-                            className="active:scale-95"
-                        >
-                            <View
-                                style={{
-                                    backgroundColor: "#ffffff",
-                                    paddingHorizontal: 16,
-                                    paddingVertical: 10,
-                                    borderRadius: 50,
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    shadowColor: "#ea580c",
-                                    shadowOpacity: 0.15,
-                                    shadowOffset: { width: 0, height: 2 },
-                                    shadowRadius: 6,
-                                    elevation: 2,
-                                }}
-                            >
-                                <HugeiconsIcon icon={PlusSignIcon} size={18} color="#ea580c" strokeWidth={2.5} />
-                                <Text className="text-orange-600 font-lexend-semibold text-xs">
-                                    Add Story
-                                </Text>
-                            </View>
-                        </Pressable>
-                    </LinearGradient>
+                    </Pressable>
                 </View>
 
                 {/* Testimonials List */}
                 <View className="px-0">
                     {testimonials.length === 0 ? (
-                        <View className="items-center py-8">
-                            <Text className="text-2xl mb-2">✨</Text>
-                            <Text className="text-gray-500 font-lexend-light text-sm">No testimonials yet</Text>
+                        <View className="items-center py-12 bg-white rounded-[24px] border border-stone-200 border-dashed mx-1">
+                            <Text className="text-3xl mb-3 opacity-50">✨</Text>
+                            <Text className="text-stone-400 font-lexend text-sm">No testimonials yet</Text>
                         </View>
                     ) : (
                         testimonials.map((item) => (
@@ -416,177 +379,140 @@ const HomePageTestimonialPreview = ({ navigation }) => {
                     )}
                 </View>
 
-                {/* See More Button */}
+                {/* See More Button - Using neutral Stone/Indigo accents */}
                 {testimonials.length > 0 && (
                     <Pressable
                         onPress={navigateToPosts}
-                        className="flex-row items-center justify-center mt-0 py-2 active:opacity-60"
+                        className="flex-row items-center justify-center mt-2 py-3 active:opacity-60"
                     >
-                        <Text className="text-indigo-600 font-lexend-medium text-sm mr-1">
-                            See all testimonials
+                        <Text className="text-stone-500 font-lexend-medium text-[13px] mr-1">
+                            See all stories
                         </Text>
-                        <HugeiconsIcon icon={ArrowRight02Icon} strokeWidth={2} size={18} color="#4f46e5" />
+                        <HugeiconsIcon icon={ArrowRight02Icon} strokeWidth={1.5} size={16} color="#78716c" />
                     </Pressable>
                 )}
             </View>
 
-            {/* Comments Modal */}
+            {/* Comments Modal - Using Prayer Wall's clean modal structure (Stone/Amber accents) */}
             <Modal
                 visible={showCommentsModal}
                 animationType="slide"
                 transparent={true}
                 onRequestClose={() => setShowCommentsModal(false)}
             >
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View
-                        className="bg-white rounded-t-[28px] h-[80%]"
-                        style={{
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: -4 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 12,
-                            elevation: 5,
-                        }}
-                    >
-                        <View className="px-6 py-4 border-b border-stone-200">
-                            <View className="flex-row items-center justify-between mb-2">
-                                <Text className="text-lg font-lexend-semibold text-gray-800">
-                                    Comments
-                                </Text>
-                                <Pressable
-                                    onPress={() => setShowCommentsModal(false)}
-                                    className="w-8 h-8 items-center justify-center active:opacity-60"
-                                >
-                                    <HugeiconsIcon pointerEvents="none" icon={Cancel01Icon} size={20} color="#57534e" strokeWidth={2} />
-                                </Pressable>
-                            </View>
-                            <Text className="text-sm font-lexend-light text-gray-600">
-                                {selectedTestimony?.title}
-                            </Text>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    className="flex-1 justify-end"
+                >
+                    <Pressable
+                        className="absolute inset-0 bg-black/20"
+                        onPress={() => setShowCommentsModal(false)}
+                    />
+
+                    <View className="bg-white rounded-t-[28px] h-[75%] w-full overflow-hidden shadow-xl">
+                        {/* Handle */}
+                        <View className="items-center pt-3 pb-2 bg-white">
+                            <View className="w-10 h-1 bg-stone-200 rounded-full" />
                         </View>
 
+                        {/* Modal Header */}
+                        <View className="px-6 pb-3 border-b border-stone-100 flex-row justify-between items-center bg-white">
+                            <View className="flex-1 mr-4">
+                                <Text className="text-[17px] font-lexend-semibold text-stone-800">
+                                    Encouragement
+                                </Text>
+                                <Text
+                                    numberOfLines={1}
+                                    className="text-[12px] font-lexend text-stone-400 mt-0.5"
+                                >
+                                    {selectedTestimony?.title}
+                                </Text>
+                            </View>
+                            <Pressable
+                                onPress={() => setShowCommentsModal(false)}
+                                className="bg-stone-50 p-1.5 rounded-full"
+                            >
+                                <HugeiconsIcon pointerEvents="none" icon={Cancel01Icon} size={20} color="#666" strokeWidth={1.5} />
+                            </Pressable>
+                        </View>
+
+                        {/* Comments List */}
                         <ScrollView
-                            className="flex-1 px-6 py-4"
+                            className="flex-1 px-6"
+                            contentContainerStyle={{ paddingVertical: 16 }}
                             showsVerticalScrollIndicator={false}
                         >
                             {loadingComments ? (
                                 <View className="items-center justify-center py-12">
-                                    <ActivityIndicator color="#F9C846" size="large" />
-                                    <Text className="text-sm font-lexend-light text-gray-500 mt-3">
-                                        Loading comments...
-                                    </Text>
+                                    <ActivityIndicator color="#B45309" size="small" />
                                 </View>
                             ) : comments.length === 0 ? (
-                                <View className="items-center justify-center py-12">
-                                    <Text className="text-[48px] mb-3">💬</Text>
-                                    <Text className="text-base font-lexend-semibold text-gray-800">
+                                <View className="items-center justify-center py-12 opacity-50">
+                                    <HugeiconsIcon pointerEvents="none" icon={BubbleChatIcon} size={32} color="#a8a29e" />
+                                    <Text className="text-stone-400 mt-2 font-lexend text-sm">
                                         No comments yet
-                                    </Text>
-                                    <Text className="text-sm font-lexend-light text-gray-500 mt-1">
-                                        Be the first to share encouragement!
                                     </Text>
                                 </View>
                             ) : (
                                 comments.map((comment) => (
-                                    <View key={comment.id} className="mb-5">
-                                        <View className="flex-row items-start gap-3">
-                                            <LinearGradient
-                                                colors={["#f59e0b", "#ea580c"]}
-                                                start={{ x: 0, y: 0 }}
-                                                end={{ x: 1, y: 1 }}
-                                                style={{
-                                                    width: 36,
-                                                    height: 36,
-                                                    borderRadius: 100,
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                }}
-                                            >
-                                                <Text className="text-white font-lexend-semibold text-sm">
-                                                    {comment.user[0].toUpperCase()}
+                                    <View key={comment.id} className="mb-5 flex-row gap-3">
+                                        {/* Simple Avatar */}
+                                        <View className="w-8 h-8 rounded-full bg-stone-100 items-center justify-center border border-stone-200">
+                                            <Text className="text-[11px] font-bold text-stone-500">
+                                                {comment.user[0].toUpperCase()}
+                                            </Text>
+                                        </View>
+                                        <View className="flex-1 pt-0.5">
+                                            <View className="flex-row items-baseline gap-2 mb-0.5">
+                                                <Text className="text-[13px] font-lexend-medium text-stone-700">
+                                                    {comment.isCurrentUser ? "You" : comment.user}
                                                 </Text>
-                                            </LinearGradient>
-                                            <View className="flex-1">
-                                                <View className="flex-row items-center gap-2 mb-1">
-                                                    <Text className="font-lexend-medium text-gray-800 text-sm">
-                                                        {comment.user}
-                                                    </Text>
-                                                    <Text className="font-lexend-light text-gray-400 text-xs">
-                                                        {comment.time}
-                                                    </Text>
-                                                </View>
-                                                <Text className="font-lexend-light text-gray-700 text-sm leading-5">
-                                                    {comment.text}
+                                                <Text className="text-[10px] text-stone-400 font-lexend">
+                                                    {comment.time}
                                                 </Text>
                                             </View>
+                                            <Text className="text-[14px] text-stone-600 font-lexend leading-[20px]">
+                                                {comment.text}
+                                            </Text>
                                         </View>
                                     </View>
                                 ))
                             )}
                         </ScrollView>
 
-                        <View className="px-6 py-4 border-t border-stone-200 bg-white">
+                        {/* Input Area */}
+                        <View className="p-4 border-t border-stone-100 pb-8 bg-white">
                             {commentError ? (
-                                <View className="mb-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
-                                    <Text className="text-red-600 font-lexend-medium text-xs">
-                                        {commentError}
-                                    </Text>
-                                </View>
+                                <Text className="text-red-500 text-[11px] mb-2 font-lexend">{commentError}</Text>
                             ) : null}
 
-                            <View className="flex-row items-center justify-between mb-2 px-1">
-                                <Text className="text-xs font-lexend-light text-gray-400">
-                                    Share your thoughts
-                                </Text>
-                                <Text className={`text-xs font-lexend-medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'}`}>
-                                    {commentText.length}/{COMMENT_MAX_LENGTH}
-                                </Text>
-                            </View>
-
-                            <View className="flex-row items-center gap-3">
+                            <View className="flex-row gap-2 items-center">
                                 <TextInput
                                     value={commentText}
                                     onChangeText={handleCommentTextChange}
-                                    placeholder="Add a comment..."
-                                    placeholderTextColor="#9ca3af"
-                                    className="flex-1 bg-stone-50 rounded-full border border-stone-200 px-5 py-3 font-lexend-light text-sm text-gray-800"
+                                    placeholder="Share your encouragement..."
+                                    placeholderTextColor="#a8a29e"
+                                    className="flex-1 bg-stone-50 border border-stone-200 rounded-full px-5 py-3 text-[14px] font-lexend text-stone-800"
                                     maxLength={COMMENT_MAX_LENGTH}
                                     editable={!sendingComment}
                                     returnKeyType="send"
                                     onSubmitEditing={handleAddComment}
-                                    blurOnSubmit={false}
                                 />
                                 <Pressable
                                     onPress={handleAddComment}
                                     disabled={!commentText.trim() || sendingComment}
-                                    className="active:scale-95"
-                                    style={{
-                                        opacity: !commentText.trim() || sendingComment ? 0.5 : 1,
-                                    }}
+                                    className={`w-11 h-11 rounded-full items-center justify-center ${commentText.trim() && !sendingComment ? 'bg-stone-800' : 'bg-stone-200'}`}
                                 >
-                                    <LinearGradient
-                                        colors={["#f59e0b", "#ea580c"]}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                        style={{
-                                            width: 44,
-                                            height: 44,
-                                            borderRadius: 100,
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                        }}
-                                    >
-                                        {sendingComment ? (
-                                            <ActivityIndicator size="small" color="white" />
-                                        ) : (
-                                            <HugeiconsIcon pointerEvents="none" icon={Sent02Icon} size={20} color="white" strokeWidth={2} />
-                                        )}
-                                    </LinearGradient>
+                                    {sendingComment ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <HugeiconsIcon pointerEvents="none" icon={Sent02Icon} size={20} color={commentText.trim() ? "white" : "#a8a29e"} variant="solid" />
+                                    )}
                                 </Pressable>
                             </View>
                         </View>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </>
     );

@@ -1,11 +1,13 @@
-import { ArrowDown01Icon, Cancel01Icon, MessageFavourite01Icon, Sent02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, Award01Icon, BookOpen01Icon, BubbleChatIcon, Cancel01Icon, InfinityIcon, LockIcon, Sent02Icon, SparklesFreeIcons, SparklesIcon, Target02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
+import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -13,7 +15,9 @@ import {
   View
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
 import { supabase } from "../lib/supabase";
+
 
 const categories = [
   { value: "Health", emoji: "❤️", colors: ["#f87171", "#fb923c"] },
@@ -41,6 +45,7 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
   const [loading, setLoading] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [showPrayerDropdown, setShowPrayerDropdown] = useState(false);
 
@@ -552,8 +557,27 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
     fetchComments(testimony.id);
   };
 
-  const openAddModal = () => {
+  const { isPremium } = useSubscription();
+  const navigation = useNavigation();
+
+  const openAddModal = async () => {
     console.log("Opening add modal");
+
+    if (!isPremium) {
+      // Check existing testimony count
+      const { count, error } = await supabase
+        .from('testimonies')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error checking testimony limit:", error);
+      } else if (count >= 1) {
+        setShowLimitModal(true);
+        return;
+      }
+    }
+
     setShowAddModal(true);
     fetchUserPrayers();
   };
@@ -692,165 +716,109 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                   return (
                     <View
                       key={testimony.id}
-                      className="bg-white rounded-3xl mb-4 overflow-hidden border border-stone-200"
+                      className="bg-white rounded-[24px] mb-4 overflow-hidden border border-stone-200"
                       style={{
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.05,
+                        shadowOpacity: 0.04,
                         shadowRadius: 8,
-                        elevation: 2,
+                        elevation: 3,
                       }}
                     >
-                      {testimony.is_featured && (
-                        <LinearGradient
-                          colors={["#fbbf24", "#f59e0b"]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 6,
-                          }}
-                        >
-                          <Text className="text-white text-xs font-lexend-semibold text-center">
-                            ⭐ FEATURED TESTIMONY
-                          </Text>
-                        </LinearGradient>
-                      )}
-
+                      {/* Thin Gradient Top Bar */}
                       <LinearGradient
-                        colors={categoryInfo.colors}
+                        colors={[...categoryInfo.colors, "#FFFFFF"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={{ paddingHorizontal: 20, paddingVertical: 14 }}
-                      >
-                        <View className="flex-row items-center justify-between">
-                          <View className="flex-row items-center gap-3">
-                            <View className="w-9 h-9 rounded-full bg-white/90 items-center justify-center">
-                              <Text className="text-sm font-lexend-semibold text-gray-700">
-                                {testimony.author ? testimony.author[0] : "A"}
+                        style={{ height: 4, width: "100%" }}
+                      />
+
+                      {/* Featured Banner */}
+                      {testimony.is_featured && (
+                        <View className="bg-amber-500/10 border-b border-amber-200 py-2 items-center">
+                          <Text className="text-amber-700 text-[11px] font-lexend-semibold tracking-wider">
+                            ✨ FEATURED STORY
+                          </Text>
+                        </View>
+                      )}
+
+                      <View className="px-6 pt-5 pb-4">
+                        {/* Header: User Info & Category */}
+                        <View className="flex-row items-center justify-between mb-3">
+                          <View className="flex-row items-center gap-2.5">
+                            {/* Avatar */}
+                            <View className="w-8 h-8 rounded-full bg-stone-100 items-center justify-center border border-stone-100">
+                              <Text className="text-[11px] font-lexend-semibold text-stone-500">
+                                {testimony.author ? testimony.author[0].toUpperCase() : "A"}
                               </Text>
                             </View>
                             <View>
-                              <Text className="font-lexend-medium text-white text-sm">
+                              <Text className="text-[13px] font-lexend-medium text-stone-700 leading-4">
                                 {testimony.author}
                               </Text>
-                              <Text className="text-white/80 text-xs font-lexend-light">
+                              <Text className="text-[11px] font-lexend text-stone-400 leading-3">
                                 {timeAgo(testimony.created_at)}
                               </Text>
                             </View>
                           </View>
-                          <View className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1 rounded-full">
-                            <Text className="text-sm">{categoryInfo.emoji}</Text>
-                            <Text className="text-white text-xs font-lexend-medium">
+
+                          {/* Minimal Category Badge */}
+                          <View className="bg-stone-50 border border-stone-100 px-2.5 py-1 rounded-full flex-row items-center gap-1.5">
+                            <Text className="text-[10px]">{categoryInfo.emoji}</Text>
+                            <Text className="text-[10px] font-lexend-medium text-stone-500 uppercase tracking-wide">
                               {testimony.category}
                             </Text>
                           </View>
                         </View>
-                      </LinearGradient>
 
-                      {/* Prayer Link Badge - Show if linked to prayer */}
-                      {testimony.prayer_request_id && (
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            margin: 12,
-                            paddingVertical: 14,
-                            paddingHorizontal: 18,
-                            borderWidth: 1,
-                            borderColor: "#e5e7eb",
-                            backgroundColor: "#fafafa",
-                            borderRadius: 14,
-                          }}
-                        >
-                          {/* Left vertical thread line */}
-                          <View
-                            style={{
-                              width: 3,
-                              backgroundColor: "#d1d5db",
-                              borderRadius: 999,
-                              marginRight: 12,
-                            }}
-                          />
+                        {/* Content */}
+                        <Text className="text-[17px] font-lexend-semibold text-stone-800 leading-[24px] mb-1.5 tracking-tight">
+                          {testimony.title}
+                        </Text>
+                        <Text className="text-[15px] font-lexend-light text-stone-600 leading-[24px]">
+                          {testimony.content}
+                        </Text>
+                      </View>
 
-                          {/* Right content block */}
-                          <View style={{ flex: 1 }}>
-                            {/* Heading Row */}
-                            <View className="flex-row items-center gap-2 mb-6">
-                              <Text style={{ fontSize: 16 }}>🙏</Text>
-                              <Text className="text-[15px] font-lexend text-gray-500">
-                                Answered Prayer Testimony
-                              </Text>
-                            </View>
-
-                            <View className="flex-row items-start gap-2 mb-2 ml-2">
-                              {/* Title */}
-                              <Text className="text-xl">✨</Text>
-
-                              <Text className="font-lexend-medium text-[15px] text-gray-900">
-                                {testimony.linkedPrayer.title}
-                              </Text>
-                            </View>
-
-                            {/* Description */}
-                            <Text className="font-lexend-light text-[14px] text-gray-500 leading-6 ml-2 mt-0">
+                      {/* Linked Prayer Block */}
+                      {testimony.prayer_request_id && testimony.linkedPrayer && (
+                        <View className="mx-4 mb-4 bg-stone-50 border border-stone-200 rounded-xl overflow-hidden">
+                          <View className="px-4 py-3 border-b border-stone-100 bg-white">
+                            <Text className="text-[11px] font-lexend-semibold uppercase tracking-wider text-stone-500">
+                              Linked to Prayer Request
+                            </Text>
+                          </View>
+                          <View className="p-4">
+                            <Text className="text-[14px] font-lexend-medium text-stone-800 mb-1">
+                              {testimony.linkedPrayer.title}
+                            </Text>
+                            <Text className="text-[13px] font-lexend-light text-stone-500 leading-[18px]" numberOfLines={2}>
                               {testimony.linkedPrayer.description}
                             </Text>
                           </View>
                         </View>
                       )}
 
-                      <View className="px-5 py-4">
-                        <View className="flex-row items-start gap-2 mb-2">
-                          <Text className="text-xl">✨</Text>
-                          <Text className="text-base font-lexend-semibold text-gray-800 flex-1">
-                            {testimony.title}
-                          </Text>
-                        </View>
-                        <Text className="text-gray-700 leading-6 font-lexend-light text-sm">
-                          {testimony.content}
-                        </Text>
-                      </View>
-
-                      <View className="px-5 pb-3">
+                      {/* Action Footer */}
+                      <View className="px-4 py-3 border-t border-stone-100 flex-row items-center justify-between bg-stone-50/30">
                         <View className="flex-row items-center gap-2">
+                          {/* Reactions */}
                           {reactions.map((reaction) => {
-                            const count =
-                              testimony.reactionCounts[`${reaction.type}_count`] ||
-                              0;
-                            const isActive = testimony.userReactions.has(
-                              reaction.type,
-                            );
+                            const count = testimony.reactionCounts[`${reaction.type}_count`] || 0;
+                            const isActive = testimony.userReactions.has(reaction.type);
 
                             return (
                               <TouchableOpacity
                                 key={reaction.type}
-                                onPress={() =>
-                                  handleToggleReaction(testimony.id, reaction.type)
-                                }
-                                activeOpacity={0.7}
-                                style={{
-                                  backgroundColor: isActive
-                                    ? `${reaction.color}15`
-                                    : "#f5f5f4",
-                                  borderWidth: isActive ? 1 : 0,
-                                  borderColor: isActive
-                                    ? reaction.color
-                                    : "transparent",
-                                  paddingHorizontal: 12,
-                                  paddingVertical: 6,
-                                  borderRadius: 100,
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  gap: 4,
-                                }}
+                                onPress={() => handleToggleReaction(testimony.id, reaction.type)}
+                                className={`flex-row items-center gap-1.5 px-3 py-2 rounded-full active:bg-stone-100 ${isActive ? 'border border-current' : ''}`}
+                                style={{ borderColor: reaction.color }}
                               >
-                                <Text className="text-sm">{reaction.emoji}</Text>
+                                <Text className="text-xl leading-none">{reaction.emoji}</Text>
                                 {count > 0 && (
                                   <Text
-                                    className="text-xs font-lexend-medium"
-                                    style={{
-                                      color: isActive ? reaction.color : "#78716c",
-                                    }}
+                                    className={`text-[13px] font-lexend ${isActive ? 'font-medium' : ''}`}
+                                    style={{ color: isActive ? reaction.color : '#57534E' }}
                                   >
                                     {count}
                                   </Text>
@@ -859,52 +827,183 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                             );
                           })}
                         </View>
-                      </View>
 
-                      <View className="px-5 pb-4 pt-2 border-t border-stone-100">
-                        <View className="flex-row items-center justify-between">
-                          <Text className="text-xs font-lexend-medium text-gray-500">
-                            {totalReactions > 0
-                              ? `${totalReactions} ${totalReactions === 1 ? "reaction" : "reactions"
-                              }`
-                              : "Be the first to react"}
+                        {/* Comment Button */}
+                        <Pressable
+                          onPress={() => openComments(testimony)}
+                          className="flex-row items-center gap-1.5 px-3 py-2 rounded-full active:bg-stone-100"
+                        >
+                          <HugeiconsIcon
+                            icon={BubbleChatIcon}
+                            size={22}
+                            color="#57534E"
+                            strokeWidth={1.5}
+                            pointerEvents="none"
+                          />
+                          <Text className="text-[13px] font-lexend text-stone-500">
+                            {testimony.commentCount > 0 ? testimony.commentCount : "Comment"}
                           </Text>
-
-                          <TouchableOpacity
-                            onPress={() => openComments(testimony)}
-                            activeOpacity={0.7}
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 8,
-                              paddingHorizontal: 12,
-                              paddingVertical: 8,
-                              borderRadius: 100,
-                              backgroundColor: "#f5f5f4",
-                            }}
-                          >
-                            <HugeiconsIcon
-                              icon={MessageFavourite01Icon}
-                              size={18}
-                              color="#78716c"
-                              strokeWidth={2}
-                              pointerEvents="none"
-                            />
-                            <Text className="text-sm font-lexend-medium text-gray-700">
-                              {testimony.commentCount}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
+                        </Pressable>
                       </View>
                     </View>
                   );
                 })
               )}
             </>
-          )}
+          )
+          }
+
+          {/* Limit Upsell Modal */}
+          < Modal
+            visible={showLimitModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowLimitModal(false)}
+          >
+            <View className="flex-1 bg-black/60 justify-end">
+              <LinearGradient
+                colors={["#ffffff", "#fefce8"]}
+                style={{
+                  width: "100%",
+                  borderTopLeftRadius: 32,
+                  borderTopRightRadius: 32,
+                  padding: 24,
+                  paddingBottom: 40,
+                  alignItems: "center",
+                  shadowColor: "#fbbf24",
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 12,
+                  elevation: 10,
+                  borderTopWidth: 1,
+                  borderColor: "#fde68a",
+                }}
+              >
+                {/* Handle Bar */}
+                <View className="w-12 h-1.5 bg-gray-200 rounded-full mb-8" />
+
+                {/* Close Button */}
+                <TouchableOpacity
+                  onPress={() => setShowLimitModal(false)}
+                  className="absolute top-6 right-6 p-2 rounded-full bg-stone-100"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} pointerEvents="none" size={20} color="#78716c" />
+                </TouchableOpacity>
+
+                {/* Header Section */}
+                <View className="items-center mb-8">
+                  <View className="mb-4 relative items-center gap-y-2">
+                    <View className="w-20 h-20 rounded-full bg-amber-100 items-center justify-center">
+                      <HugeiconsIcon icon={LockIcon} size={40} color="#f59e0b" variant="solid" />
+                    </View>
+                    <View className=" bg-gradient-to-r from-amber-500 to-orange-500 rounded-full px-3 py-1 shadow-sm border border-white">
+                      <Text className="text-[10px] font-lexend-bold text-amber-600 uppercase tracking-wider bg-white px-2 py-0.5 rounded-full">
+                        PREMIUM
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text className="text-2xl font-lexend-bold text-gray-900 text-center mb-2">
+                    Unlock Everything
+                  </Text>
+                  <Text className="text-sm font-lexend-light text-gray-500 text-center max-w-[260px]">
+                    Remove all limits and accelerate your spiritual journey.
+                  </Text>
+                </View>
+
+                {/* Features List */}
+                <View className="w-full mb-8 gap-y-4">
+                  {/* Feature 1 */}
+                  <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                    <View className="w-10 h-10 rounded-full bg-amber-100 items-center justify-center">
+                      <HugeiconsIcon icon={InfinityIcon} size={22} color="#d97706" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-lexend-semibold text-gray-800">Unlimited Testimonies</Text>
+                      <Text className="text-xs text-gray-500 font-lexend-light">Share your story without limits</Text>
+                    </View>
+                  </View>
+
+                  {/* Feature 2 */}
+                  <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                    <View className="w-10 h-10 rounded-full bg-purple-100 items-center justify-center">
+                      <HugeiconsIcon icon={Target02Icon} size={22} color="#9333ea" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-lexend-semibold text-gray-800">Weekly Quests</Text>
+                      <Text className="text-xs text-gray-500 font-lexend-light">Unlock exclusive spiritual challenges</Text>
+                    </View>
+                  </View>
+
+                  {/* Feature 3 */}
+                  <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                    <View className="w-10 h-10 rounded-full bg-blue-100 items-center justify-center">
+                      <HugeiconsIcon icon={Award01Icon} size={22} color="#2563eb" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-lexend-semibold text-gray-800">Exclusive Badges</Text>
+                      <Text className="text-xs text-gray-500 font-lexend-light">Earn rare achievements</Text>
+                    </View>
+                  </View>
+
+                  {/* Feature 4 */}
+                  <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                    <View className="w-10 h-10 rounded-full bg-emerald-100 items-center justify-center">
+                      <HugeiconsIcon icon={BookOpen01Icon} size={22} color="#059669" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-lexend-semibold text-gray-800">Unlimited Verses</Text>
+                      <Text className="text-xs text-gray-500 font-lexend-light">Access the full depth of scripture</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Action Button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowLimitModal(false);
+                    navigation.navigate("Paywall");
+                  }}
+                  className="w-full active:scale-[0.98] transition-all mb-4"
+                >
+                  <LinearGradient
+                    colors={["#fbbf24", "#f59e0b"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      gap: 8,
+                      paddingVertical: 18,
+                      borderRadius: 24,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: "#f59e0b",
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 16,
+                      elevation: 8,
+                    }}
+                  >
+                    <Text className="text-white font-lexend-bold text-lg tracking-wide">
+                      Upgrade to Premium
+                    </Text>
+                    <HugeiconsIcon icon={SparklesFreeIcons} size={26} color="#fafafa" pointerEvents="none" />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowLimitModal(false)}
+                  className="py-2"
+                >
+                  <Text className="text-gray-400 font-lexend-medium text-sm">Maybe Later</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </Modal >
 
           {/* ADD TESTIMONY MODAL */}
-          <Modal
+          < Modal
             visible={showAddModal}
             animationType="slide"
             transparent
@@ -1335,10 +1434,10 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                 </View>
               </View>
             </View>
-          </Modal>
+          </Modal >
 
           {/* COMMENTS MODAL */}
-          <Modal
+          < Modal
             visible={showCommentsModal}
             animationType="slide"
             transparent
@@ -1504,10 +1603,11 @@ const TestimoniesScreen = React.memo(function TestimoniesScreen() {
                 </View>
               </View>
             </View>
-          </Modal>
-        </View>
-      </View>
-    </ScrollView>
+          </Modal >
+        </View >
+      </View >
+
+    </ScrollView >
   );
 });
 

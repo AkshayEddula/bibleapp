@@ -1,8 +1,10 @@
+
 // PrayerWallScreen.js
-import { Cancel01Icon, FavouriteIcon, MessageFavourite01Icon, Sent02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { Award01Icon, BookOpen01Icon, BubbleChatIcon, Cancel01Icon, FavouriteIcon, InfinityIcon, LockIcon, Sent02Icon, SparklesIcon, Target02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { useNavigation } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,6 +17,7 @@ import {
   View
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
 import { supabase } from "../lib/supabase";
 
 const categories = [
@@ -35,6 +38,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
   const [prayers, setPrayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [selectedPrayer, setSelectedPrayer] = useState(null);
   const [comments, setComments] = useState([]);
@@ -72,15 +76,15 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
         .from("prayer_requests")
         .select(
           `
-          id,
-          title,
-          description,
-          category,
-          created_at,
-          profiles:user_id (
-            display_name,
-            profile_photo_url
-          )
+id,
+  title,
+  description,
+  category,
+  created_at,
+  profiles: user_id(
+    display_name,
+    profile_photo_url
+  )
         `,
         )
         .order("created_at", { ascending: false });
@@ -122,7 +126,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
               isPraying: !!userReactionResult.data,
             };
           } catch (prayerError) {
-            console.error(`Error processing prayer ${prayer.id}:`, prayerError);
+            console.error(`Error processing prayer ${prayer.id}: `, prayerError);
             // Return prayer with default values if processing fails
             return {
               ...prayer,
@@ -218,6 +222,28 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
     }
   };
 
+  const { isPremium } = useSubscription();
+  const navigation = useNavigation();
+
+  const handleOpenAddModal = async () => {
+    if (!isPremium) {
+      // Check existing prayer count
+      const { count, error } = await supabase
+        .from('prayer_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error checking prayer limit:", error);
+        // Fallback: allow add if check fails, or show error? Let's be generous on error.
+      } else if (count >= 1) {
+        setShowLimitModal(true);
+        return;
+      }
+    }
+    setShowAddModal(true);
+  };
+
   const handleAddPrayer = async () => {
     // Validation
     const trimmedTitle = newPrayer.title.trim();
@@ -255,16 +281,16 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
         })
         .select(
           `
-          id,
-          title,
-          description,
-          category,
-          created_at,
-          profiles:user_id (
-            display_name,
-            profile_photo_url
-          )
-        `,
+id,
+  title,
+  description,
+  category,
+  created_at,
+  profiles: user_id(
+    display_name,
+    profile_photo_url
+  )
+    `,
         )
         .single();
 
@@ -304,13 +330,13 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
         .from("prayer_comments")
         .select(
           `
-          id,
-          comment_text,
-          created_at,
-          user_id,
-          profiles:user_id (
-            display_name
-          )
+id,
+  comment_text,
+  created_at,
+  user_id,
+  profiles: user_id(
+    display_name
+  )
         `,
         )
         .eq("prayer_request_id", prayerId)
@@ -377,13 +403,13 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
         })
         .select(
           `
-          id,
-          comment_text,
-          created_at,
-          user_id,
-          profiles:user_id (
-            display_name
-          )
+id,
+  comment_text,
+  created_at,
+  user_id,
+  profiles: user_id(
+    display_name
+  )
         `,
         )
         .single();
@@ -448,7 +474,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
   // Add Prayer Card Component
   const AddPrayerCard = () => (
     <Pressable
-      onPress={() => setShowAddModal(true)}
+      onPress={handleOpenAddModal}
       className="active:scale-[0.98]"
     >
       <LinearGradient
@@ -523,7 +549,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
             </Text>
           </View>
           <Pressable
-            onPress={() => setShowAddModal(true)}
+            onPress={handleOpenAddModal}
             className="active:scale-95"
           >
             <LinearGradient
@@ -570,128 +596,262 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
               prayers.map((prayer) => {
                 const categoryInfo = getCategoryInfo(prayer.category);
                 return (
+
                   <View
                     key={prayer.id}
-                    className="bg-white rounded-3xl mb-4 overflow-hidden border border-stone-200"
+                    className="bg-white rounded-[24px] mb-4 overflow-hidden border border-stone-200"
                     style={{
                       shadowColor: "#000",
                       shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.05,
+                      shadowOpacity: 0.04,
                       shadowRadius: 8,
-                      elevation: 2,
+                      elevation: 3,
                     }}
                   >
-                    {/* Prayer Header */}
+                    {/* Thin Gradient Top Bar */}
                     <LinearGradient
-                      colors={categoryInfo.colors}
+                      colors={[...categoryInfo.colors, "#FFFFFF"]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
-                      style={{ paddingHorizontal: 20, paddingVertical: 14 }}
-                    >
-                      <View className="flex-row items-center justify-between">
-                        <View className="flex-row items-center gap-3">
-                          <View className="w-9 h-9 rounded-full bg-white/90 items-center justify-center">
-                            <Text className="text-sm font-lexend-semibold text-gray-700">
-                              {prayer.author[0]}
+                      style={{ height: 4, width: "100%" }}
+                    />
+
+                    <View className="px-6 pt-5 pb-4">
+                      {/* Header: User Info & Category */}
+                      <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-row items-center gap-2.5">
+                          <View className="w-8 h-8 rounded-full bg-stone-100 items-center justify-center border border-stone-100">
+                            <Text className="text-[11px] font-lexend-semibold text-stone-500">
+                              {prayer.author ? prayer.author[0].toUpperCase() : "A"}
                             </Text>
                           </View>
                           <View>
-                            <Text className="font-lexend-medium text-white text-sm">
+                            <Text className="text-[13px] mb-1 font-lexend-medium text-stone-700 leading-4">
                               {prayer.author}
                             </Text>
-                            <Text className="text-white/80 text-xs font-lexend-light">
+                            <Text className="text-[11px] font-lexend text-stone-400 leading-3">
                               {timeAgo(prayer.created_at)}
                             </Text>
                           </View>
                         </View>
-                        <View className="flex-row items-center gap-1.5 bg-white/20 px-2.5 py-1 rounded-full">
-                          <Text className="text-sm">{categoryInfo.emoji}</Text>
-                          <Text className="text-white text-xs font-lexend-medium">
+
+                        {/* Minimal Category Badge */}
+                        <View className="bg-stone-50 border border-stone-100 px-2.5 py-1 rounded-full flex-row items-center gap-1.5">
+                          <Text className="text-[10px]">{categoryInfo.emoji}</Text>
+                          <Text className="text-[10px] font-lexend-medium text-stone-500 uppercase tracking-wide">
                             {prayer.category}
                           </Text>
                         </View>
                       </View>
-                    </LinearGradient>
 
-                    {/* Prayer Content */}
-                    <View className="px-5 py-4">
-                      <View className="flex-row items-start gap-2 mb-2">
-                        <Text className="text-xl">🙏</Text>
-                        <Text className="text-base font-lexend-semibold text-gray-800 flex-1">
-                          {prayer.title}
-                        </Text>
-                      </View>
-                      <Text className="text-gray-700 leading-6 font-lexend-light text-sm">
+                      {/* Content */}
+                      <Text className="text-[17px] font-lexend-semibold text-stone-800 leading-[24px] mb-1.5 tracking-tight">
+                        {prayer.title}
+                      </Text>
+                      <Text className="text-[15px] font-lexend-light text-stone-600 leading-[24px]">
                         {prayer.description}
                       </Text>
                     </View>
 
-                    {/* Action Bar */}
-                    <View className="px-5 pb-4 pt-2 border-t border-stone-100">
-                      <View className="flex-row items-center justify-between pt-2">
-                        {/* Praying Button */}
-                        <Pressable
-                          onPress={() => handleTogglePraying(prayer.id)}
-                          className="flex-row items-center gap-2 px-3 py-2 rounded-full active:scale-95"
-                          style={{
-                            backgroundColor: prayer.isPraying
-                              ? "#faf5ff"
-                              : "transparent",
-                            borderWidth: prayer.isPraying ? 1 : 0,
-                            borderColor: "#e9d5ff",
-                          }}
+                    {/* Action Footer */}
+                    <View className="px-4 py-3 border-t border-stone-100 flex-row items-center gap-2 bg-stone-50/30">
+                      {/* Praying Button */}
+                      <Pressable
+                        onPress={() => handleTogglePraying(prayer.id)}
+                        className="flex-row items-center gap-1.5 px-3 py-2 rounded-full active:bg-stone-100"
+                      >
+                        <HugeiconsIcon
+                          icon={FavouriteIcon}
+                          size={22}
+                          color={prayer.isPraying ? "#EF4444" : "#57534E"}
+                          fill={prayer.isPraying ? "#EF4444" : "transparent"}
+                          strokeWidth={1.5}
+                          pointerEvents="none"
+                        />
+                        <Text
+                          className={`text-[13px] font-lexend ${prayer.isPraying
+                            ? "text-red-500 font-medium"
+                            : "text-stone-500"
+                            }`}
                         >
-                          <HugeiconsIcon
-                            icon={FavouriteIcon}
-                            size={20}
-                            color={prayer.isPraying ? "#a855f7" : "#78716c"}
-                            fill={prayer.isPraying ? "#a855f7" : "transparent"}
-                            strokeWidth={2}
-                            pointerEvents="none"
-                          />
-                          <Text
-                            className={`text-sm font-lexend-medium ${prayer.isPraying
-                              ? "text-purple-600"
-                              : "text-gray-700"
-                              }`}
-                          >
-                            {prayer.isPraying ? "Praying" : "Pray"}
-                          </Text>
-                          <Text
-                            className={`text-sm font-lexend-semibold ${prayer.isPraying
-                              ? "text-purple-600"
-                              : "text-gray-500"
-                              }`}
-                          >
-                            {prayer.prayingCount}
-                          </Text>
-                        </Pressable>
+                          {prayer.prayingCount > 0 ? prayer.prayingCount : "Pray"}
+                        </Text>
+                      </Pressable>
 
-                        {/* Comments Button */}
-                        <Pressable
-                          onPress={() => openComments(prayer)}
-                          className="flex-row items-center gap-2 px-3 py-2 rounded-full active:scale-95"
-                        >
-                          <HugeiconsIcon
-                            icon={MessageFavourite01Icon}
-                            size={20}
-                            color="#78716c"
-                            strokeWidth={2}
-                            pointerEvents="none"
-                          />
-                          <Text className="text-sm font-lexend-medium text-gray-700">
-                            {prayer.commentCount}
-                          </Text>
-                        </Pressable>
-                      </View>
+                      {/* Comments Button */}
+                      <Pressable
+                        onPress={() => openComments(prayer)}
+                        className="flex-row items-center gap-1.5 px-3 py-2 rounded-full active:bg-stone-100"
+                      >
+                        <HugeiconsIcon
+                          icon={BubbleChatIcon}
+                          size={22}
+                          color="#57534E"
+                          strokeWidth={1.5}
+                          pointerEvents="none"
+                        />
+                        <Text className="text-[13px] font-lexend text-stone-500">
+                          {prayer.commentCount > 0 ? prayer.commentCount : "Comment"}
+                        </Text>
+                      </Pressable>
                     </View>
                   </View>
                 );
               })
+
             )}
           </>
         )}
       </ScrollView>
+
+      {/* Limit Upsell Modal */}
+      <Modal
+        visible={showLimitModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLimitModal(false)}
+      >
+        <View className="flex-1 bg-black/60 justify-end">
+          <LinearGradient
+            colors={["#ffffff", "#fefce8"]}
+            style={{
+              width: "100%",
+              borderTopLeftRadius: 32,
+              borderTopRightRadius: 32,
+              padding: 24,
+              paddingBottom: 40,
+              alignItems: "center",
+              shadowColor: "#fbbf24",
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 10,
+              borderTopWidth: 1,
+              borderColor: "#fde68a",
+            }}
+          >
+            {/* Handle Bar */}
+            <View className="w-12 h-1.5 bg-gray-200 rounded-full mb-8" />
+
+            {/* Close Button */}
+            <Pressable
+              onPress={() => setShowLimitModal(false)}
+              className="absolute top-6 right-6 p-2 rounded-full bg-stone-100"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={20} color="#78716c" pointerEvents="none" />
+            </Pressable>
+
+            {/* Header Section */}
+            <View className="items-center mb-8">
+              <View className="mb-4 items-center gap-2">
+                <View className="w-20 h-20 rounded-full bg-amber-100 items-center justify-center">
+                  <HugeiconsIcon icon={LockIcon} size={40} color="#f59e0b" variant="solid" />
+                </View>
+                <View className=" bg-gradient-to-r from-amber-500 to-orange-500 rounded-full px-3 py-1 shadow-sm border border-white">
+                  <Text className="text-[10px] font-lexend-bold text-amber-600 uppercase tracking-wider bg-white px-2 py-0.5 rounded-full">
+                    PREMIUM
+                  </Text>
+                </View>
+              </View>
+
+              <Text className="text-2xl font-lexend-bold text-gray-900 text-center mb-2">
+                Unlock Everything
+              </Text>
+              <Text className="text-sm font-lexend-light text-gray-500 text-center max-w-[260px]">
+                Remove all limits and accelerate your spiritual journey.
+              </Text>
+            </View>
+
+            {/* Features List */}
+            <View className="w-full mb-8 gap-y-4">
+              {/* Feature 1 */}
+              <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                <View className="w-10 h-10 rounded-full bg-amber-100 items-center justify-center">
+                  <HugeiconsIcon icon={InfinityIcon} size={22} color="#d97706" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-lexend-semibold text-gray-800">Unlimited Prayers</Text>
+                  <Text className="text-xs text-gray-500 font-lexend-light">Share your heart without limits</Text>
+                </View>
+              </View>
+
+              {/* Feature 2 */}
+              <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                <View className="w-10 h-10 rounded-full bg-purple-100 items-center justify-center">
+                  <HugeiconsIcon icon={Target02Icon} size={22} color="#9333ea" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-lexend-semibold text-gray-800">Weekly Quests</Text>
+                  <Text className="text-xs text-gray-500 font-lexend-light">Unlock exclusive spiritual challenges</Text>
+                </View>
+              </View>
+
+              {/* Feature 3 */}
+              <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                <View className="w-10 h-10 rounded-full bg-blue-100 items-center justify-center">
+                  <HugeiconsIcon icon={Award01Icon} size={22} color="#2563eb" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-lexend-semibold text-gray-800">Exclusive Badges</Text>
+                  <Text className="text-xs text-gray-500 font-lexend-light">Earn rare achievements</Text>
+                </View>
+              </View>
+
+              {/* Feature 4 */}
+              <View className="flex-row items-center gap-4 bg-white/60 p-3 rounded-2xl border border-stone-100">
+                <View className="w-10 h-10 rounded-full bg-emerald-100 items-center justify-center">
+                  <HugeiconsIcon icon={BookOpen01Icon} size={22} color="#059669" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-lexend-semibold text-gray-800">Unlimited Verses</Text>
+                  <Text className="text-xs text-gray-500 font-lexend-light">Access the full depth of scripture</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Action Button */}
+            <Pressable
+              onPress={() => {
+                setShowLimitModal(false);
+                navigation.navigate("Paywall");
+              }}
+              className="w-full active:scale-[0.98] transition-all mb-4"
+            >
+              <LinearGradient
+                colors={["#fbbf24", "#f59e0b"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  paddingVertical: 18,
+                  borderRadius: 24,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#f59e0b",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 8,
+                }}
+              >
+                <Text className="text-white font-lexend-bold text-lg tracking-wide">
+                  Upgrade to Premium
+                </Text>
+                <HugeiconsIcon icon={SparklesIcon} size={26} pointerEvents="none" color="#fff" />
+              </LinearGradient>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setShowLimitModal(false)}
+              className="py-2"
+            >
+              <Text className="text-gray-400 font-lexend-medium text-sm">Maybe Later</Text>
+            </Pressable>
+          </LinearGradient>
+        </View>
+      </Modal>
 
       {/* Add Prayer Modal */}
       <Modal
@@ -985,7 +1145,7 @@ const PrayerWallScreen = React.memo(function PrayerWallScreen() {
                 <Text className="text-xs font-lexend-light text-gray-400">
                   Share your prayers
                 </Text>
-                <Text className={`text-xs font-lexend-medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'}`}>
+                <Text className={`text - xs font - lexend - medium ${commentText.length > COMMENT_MAX_LENGTH * 0.9 ? 'text-orange-500' : 'text-gray-400'} `}>
                   {commentText.length}/{COMMENT_MAX_LENGTH}
                 </Text>
               </View>

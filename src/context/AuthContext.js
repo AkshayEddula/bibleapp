@@ -30,11 +30,13 @@ export const AuthProvider = ({ children }) => {
 
           // Store session in AsyncStorage
           await AsyncStorage.setItem("userSession", JSON.stringify(session));
+          setIsLoading(false);
         } else {
           setUser(null);
           setProfile(null);
           setIsUserLoggedIn(false);
           await AsyncStorage.removeItem("userSession");
+          setIsLoading(false);
         }
       },
     );

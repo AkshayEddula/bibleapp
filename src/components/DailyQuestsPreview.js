@@ -1,8 +1,8 @@
 import { ArrowRight01Icon, CheckmarkCircle02Icon, CircleIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     Dimensions,
     Pressable,
@@ -67,25 +67,90 @@ const DailyQuestsPreview = () => {
         );
     }, []);
 
-    useEffect(() => {
-        if (user) {
-            fetchDailyQuests();
-        }
-    }, [user]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user) {
+                fetchDailyQuests();
+
+                // Real-time subscription for quest updates
+                const channel = supabase
+                    .channel('daily_quests_preview_changes')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: '*',
+                            schema: 'public',
+                            table: 'user_quests',
+                            filter: `user_id=eq.${user.id}`,
+                        },
+                        (payload) => {
+                            console.log('Quest update received:', payload);
+                            fetchDailyQuests();
+                        }
+                    )
+                    .subscribe((status) => {
+                        console.log("Realtime subscription status:", status);
+                        if (status === 'SUBSCRIBED') {
+                            console.log("Successfully subscribed to user_quests changes");
+                        }
+                    });
+
+                return () => {
+                    supabase.removeChannel(channel);
+                };
+            }
+        }, [user])
+    );
 
     const fetchDailyQuests = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase.rpc('get_user_quests', {
-                p_user_id: user.id
-            });
+            let fetchedData = [];
 
-            if (error) throw error;
+            try {
+                // 1. Try RPC first
+                const { data, error } = await supabase.rpc('get_user_quests', {
+                    p_user_id: user.id
+                });
 
-            if (data) {
+                if (error) throw error;
+                fetchedData = data || [];
+
+            } catch (rpcError) {
+                console.log("RPC get_user_quests failed, falling back to direct table fetch:", rpcError.message);
+
+                // 2. Fallback: Manual Join
+                // Fetch active quests
+                const { data: allQuests, error: questsError } = await supabase
+                    .from('quests')
+                    .select('*')
+                    .eq('is_active', true);
+
+                if (questsError) throw questsError;
+
+                // Fetch user progress
+                const { data: userProgress, error: progressError } = await supabase
+                    .from('user_quests')
+                    .select('*')
+                    .eq('user_id', user.id);
+
+                if (progressError) throw progressError;
+
+                // Merge
+                fetchedData = allQuests.map(quest => {
+                    const progress = userProgress?.find(up => up.quest_id === quest.id);
+                    return {
+                        ...quest,
+                        is_completed: progress?.is_completed || false,
+                        progress: progress?.progress || 0,
+                    };
+                });
+            }
+
+            if (fetchedData) {
                 // Filter for daily quests only and deduplicate
                 const uniqueQuests = Object.values(
-                    data.reduce((acc, curr) => {
+                    fetchedData.reduce((acc, curr) => {
                         if (!acc[curr.id]) acc[curr.id] = curr;
                         return acc;
                     }, {})

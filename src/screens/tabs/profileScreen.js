@@ -1,5 +1,6 @@
-import { Alert02Icon, Cancel01Icon, FavouriteIcon, Files02Icon, Logout02Icon, MessageFavourite01Icon, Settings01Icon, ShieldEnergyIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, Cancel01Icon, FavouriteIcon, Files02Icon, InformationDiamondIcon, Logout02Icon, MessageFavourite01Icon, Settings01Icon, ShieldEnergyIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
+import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Dimensions, FlatList, Image, Modal, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
@@ -7,6 +8,7 @@ import { Easing } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ReelsViewer from "../../components/ReelsViewer";
 import { useAuth } from "../../context/AuthContext";
+import { useSubscription } from "../../context/SubscriptionContext";
 import { supabase } from "../../lib/supabase";
 import { images } from "../../utils";
 
@@ -16,6 +18,8 @@ const POST_CARD_SIZE = (width - 48) / 2 - 6; // 2 columns for posts
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { isPremium } = useSubscription();
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("posts"); // posts, liked, saved
@@ -785,6 +789,58 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
+
+            {/* Upgrade to Premium Banner - Light Premium Theme */}
+            {!isPremium && (
+              <Pressable
+                onPress={() => navigation.navigate("Paywall")}
+                className="w-full mt-6"
+              >
+                <LinearGradient
+                  colors={["#FFFBEB", "#ffffff"]} // Soft Warm Light Gradient
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    borderRadius: 24,
+                    padding: 1,
+                    shadowColor: "#F59E0B",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 4,
+                    borderWidth: 1,
+                    borderColor: "#FEF3C7", // Amber-100/200
+                  }}
+                >
+                  <View className="rounded-[23px] overflow-hidden p-5 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-4 flex-1">
+                      <View className="w-12 h-12 rounded-full items-center justify-center bg-amber-100 border border-amber-200">
+                        <HugeiconsIcon
+                          icon={SparklesIcon}
+                          size={24}
+                          color="#D97706" // Amber-600
+                          variant="solid"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-amber-950 font-lexend-bold text-lg leading-6">
+                          Go Premium
+                        </Text>
+                        <Text className="text-amber-700/80 font-lexend-light text-xs mt-0.5 mr-2">
+                          Unlock unlimited access & exclusive badges
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="bg-amber-500 px-4 py-2 rounded-full shadow-sm shadow-amber-200">
+                      <Text className="text-white font-lexend-bold text-xs tracking-wide">
+                        UPGRADE
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </Pressable>
+            )}
           </View>
         </View>
 
@@ -1007,6 +1063,55 @@ export default function ProfileScreen() {
                     </View>
                   </View>
                 </View>
+              </View>
+
+              {/* Subscription Section */}
+              <View className="mb-6">
+                <Text className="text-xs font-lexend-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Subscription
+                </Text>
+
+                <Pressable
+                  className={`${isPremium ? "bg-amber-50" : "bg-gray-50"} rounded-2xl p-4 mb-3 active:scale-[0.98]`}
+                  onPress={() => {
+                    setSettingsVisible(false);
+                    if (isPremium) {
+                      // Navigate to manage subscription screen or show alert
+                      // For now, simpler handling or navigate to a dedicated manage screen if it existed
+                      Alert.alert("Manage Subscription", "To manage or cancel your subscription, please visit your Apple ID settings.", [
+                        { text: "OK" }
+                      ]);
+                    } else {
+                      navigation.navigate("Paywall");
+                    }
+                  }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1">
+                      <View className={`w-12 h-12 ${isPremium ? "bg-amber-100" : "bg-gray-200"} rounded-full items-center justify-center mr-3`}>
+                        <HugeiconsIcon
+                          icon={isPremium ? SparklesIcon : InformationDiamondIcon}
+                          size={20}
+                          color={isPremium ? "#d97706" : "#4b5563"}
+                          variant={isPremium ? "solid" : "stroke"}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className={`${isPremium ? "text-amber-800" : "text-gray-900"} font-lexend-semibold text-base`}>
+                          {isPremium ? "Premium Active" : "Free Plan"}
+                        </Text>
+                        <Text className={`${isPremium ? "text-amber-600" : "text-gray-500"} font-lexend-light text-sm mt-0.5`}>
+                          {isPremium ? "Manage your subscription" : "Upgrade to unlock features"}
+                        </Text>
+                      </View>
+                    </View>
+                    {!isPremium && (
+                      <View className="bg-gray-900 px-3 py-1.5 rounded-full">
+                        <Text className="text-white text-xs font-lexend-medium">Upgrade</Text>
+                      </View>
+                    )}
+                  </View>
+                </Pressable>
               </View>
 
               {/* Legal Section */}

@@ -42,7 +42,7 @@ export default function RootNavigator() {
             />
             <Stack.Screen name="Prayers" component={PrayerWallScreen} />
             <Stack.Screen name="Testimonies" component={TestimoniesScreen} />
-            <Stack.Screen name="Paywall" component={PaywallScreen} />
+            <Stack.Screen name="Paywall" component={PaywallScreen} options={{ headerShown: false }} />
           </>
         )
       ) : (

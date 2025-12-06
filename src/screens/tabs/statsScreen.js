@@ -1,6 +1,6 @@
 import { ChampionIcon, CheckmarkCircle02Icon, Clock01Icon, Fire02Icon, LockIcon, MagicWand02Icon, Medal01Icon, ZapIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +23,7 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 import CelebrationModal from "../../components/CelebrationModal";
 import { useAuth } from "../../context/AuthContext";
+import { useSubscription } from "../../context/SubscriptionContext";
 import { supabase } from "../../lib/supabase";
 import { images } from "../../utils";
 
@@ -182,7 +183,9 @@ const DetailsModal = ({ visible, item, onClose, type }) => {
 
 
 export default function StatsScreen() {
+  const navigation = useNavigation();
   const { user, isLoading: authLoading } = useAuth();
+  const { isPremium } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [celebrationQueue, setCelebrationQueue] = useState([]);
   const [currentCelebration, setCurrentCelebration] = useState(null);
@@ -243,7 +246,12 @@ export default function StatsScreen() {
             !shownCelebrationsRef.current.has(`quest-${q.id}`)
           ) {
             console.log("Queueing celebration for quest:", q.title);
-            newCelebrations.push({ type: "quest", item: q });
+            // If user is not premium, make it an upsell
+            newCelebrations.push({
+              type: "quest",
+              item: q,
+              isUpsell: !isPremium // Mark as upsell if free user
+            });
             shownCelebrationsRef.current.add(`quest-${q.id}`);
           }
         }
@@ -752,7 +760,44 @@ export default function StatsScreen() {
                   )}
 
                   {/* Weekly Quests */}
-                  {weeklyQuests.length > 0 && (
+                  {!isPremium ? (
+                    <View className="mb-6">
+                      <Text className="text-[16px] font-lexend-semibold text-gray-800 mb-3 px-1">
+                        Weekly Quests
+                      </Text>
+                      {weeklyQuests.length > 0 ? (
+                        weeklyQuests.map((quest) => (
+                          <QuestCard
+                            key={quest.id}
+                            quest={quest}
+                            isLocked={true}
+                            onPress={() => navigation.navigate('Paywall')}
+                          />
+                        ))
+                      ) : (
+                        /* Fallback if no actual quests loaded, show generic locked card */
+                        <View className="bg-purple-50 rounded-[24px] p-6 items-center justify-center border border-purple-100">
+                          <View className="w-16 h-16 bg-purple-100 rounded-full items-center justify-center mb-3">
+                            <HugeiconsIcon icon={LockIcon} size={32} color="#7C3AED" strokeWidth={2} />
+                          </View>
+                          <Text className="text-[18px] font-lexend-bold text-gray-900 mb-1">
+                            Unlock Weekly Quests
+                          </Text>
+                          <Text className="text-[14px] font-lexend text-gray-600 text-center mb-4 leading-5">
+                            Upgrade to Premium to access weekly challenges and earn massive XP rewards!
+                          </Text>
+                          <Pressable
+                            onPress={() => navigation.navigate('Paywall')}
+                            className="bg-purple-600 px-6 py-3 rounded-full active:opacity-90"
+                          >
+                            <Text className="text-white font-lexend-medium">
+                              Upgrade Now
+                            </Text>
+                          </Pressable>
+                        </View>
+                      )}
+                    </View>
+                  ) : weeklyQuests.length > 0 && (
                     <View className="mb-6">
                       <Text className="text-[16px] font-lexend-semibold text-gray-800 mb-3 px-1">
                         Weekly Quests
@@ -785,7 +830,7 @@ export default function StatsScreen() {
                   </Text>
                 ) : (
                   <View className="flex-row flex-wrap gap-3">
-                    {earnedBadges.map((badge) => (
+                    {(isPremium ? earnedBadges : earnedBadges.slice(0, 2)).map((badge) => (
                       <BadgeCard
                         key={badge.id}
                         badge={badge}
@@ -803,16 +848,24 @@ export default function StatsScreen() {
                 <Text className="text-[16px] font-lexend-semibold text-gray-800 mb-3 px-1">
                   Available Badges
                 </Text>
+
                 <View className="flex-row flex-wrap gap-3">
                   {lockedBadges.map((badge) => (
                     <BadgeCard
                       key={badge.id}
                       badge={badge}
                       isLocked={true}
-                      onPress={() => openDetails(badge, 'badge')}
+                      onPress={() => {
+                        if (!isPremium) {
+                          navigation.navigate('Paywall');
+                        } else {
+                          openDetails(badge, 'badge');
+                        }
+                      }}
                     />
                   ))}
                 </View>
+
               </View>
             </View>
           )}
@@ -823,6 +876,10 @@ export default function StatsScreen() {
         visible={!!currentCelebration}
         items={currentCelebration || []}
         onClose={closeCelebration}
+        onUpgrade={() => {
+          closeCelebration();
+          navigation.navigate('Paywall');
+        }}
       />
 
       {/* Details Modal */}
@@ -837,9 +894,66 @@ export default function StatsScreen() {
 }
 
 // Quest Card Component
-function QuestCard({ quest, compact = false, onPress }) {
+function QuestCard({ quest, compact = false, isLocked = false, onPress }) {
   const progress = (quest.progress / quest.requirement_count) * 100 || 0;
   const isComplete = quest.is_completed || progress >= 100;
+
+  if (isLocked) {
+    return (
+      <Pressable
+        onPress={onPress}
+        className={`bg-white rounded-[24px] p-5 mb-3 border border-stone-200/60 active:scale-[0.98] transition-transform overflow-hidden relative ${compact ? 'py-4' : ''}`}
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.04,
+          shadowRadius: 12,
+          elevation: 2,
+        }}
+      >
+        <View className="opacity-40 blur-sm" style={{ filter: 'blur(4px)' }}>
+          {/* Header */}
+          <View className="flex-row items-start justify-between mb-3">
+            <View className="flex-1 pr-3">
+              <Text className="text-[16px] font-lexend-semibold text-gray-800 mb-1">
+                {quest.title}
+              </Text>
+              {!compact && (
+                <Text className="text-[13px] font-lexend-light text-gray-600 leading-[18px]">
+                  {quest.description}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Progress Bar */}
+          <View className="mb-3">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-[12px] font-lexend-medium text-gray-700">
+                0 / {quest.requirement_count}
+              </Text>
+              <Text className="text-[12px] font-lexend-semibold text-indigo-600">
+                0%
+              </Text>
+            </View>
+            <View className="h-2 bg-stone-100 rounded-full overflow-hidden">
+              <View className="w-0 h-full" />
+            </View>
+          </View>
+        </View>
+
+        {/* Lock Overlay */}
+        <View className="absolute inset-0 items-center justify-center bg-white/10 backdrop-blur-md">
+          <View className="w-12 h-12 rounded-full bg-white/80 items-center justify-center shadow-sm border border-white">
+            <HugeiconsIcon icon={LockIcon} size={24} color="#6B7280" strokeWidth={2} />
+          </View>
+          <Text className="text-[12px] font-lexend-medium text-gray-600 mt-2 bg-white/50 px-3 py-1 rounded-full overflow-hidden">
+            Premium
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -947,28 +1061,33 @@ function BadgeCard({ badge, earnedAt, isLocked = false, onPress }) {
     return (
       <Pressable
         onPress={onPress}
-        className="bg-white rounded-[24px] p-4 border border-stone-200/60 active:scale-[0.98] transition-transform"
+        className="rounded-[24px] overflow-hidden active:scale-[0.98] transition-transform bg-gray-100"
         style={{
           width: (width - 60) / 2,
+          height: 180,
+          opacity: 0.9
         }}
       >
-        <View className="items-center mb-4 opacity-50">
-          <View className="w-[72px] h-[72px] rounded-full items-center justify-center bg-gray-100 mb-2">
-            {badge.icon_url ? (
-              <Text className="text-[32px] opacity-40">{badge.icon_url}</Text>
-            ) : (
-              <HugeiconsIcon icon={LockIcon} size={28} color="#9CA3AF" pointerEvents="none" />
-            )}
+        <ImageBackground
+          source={images.J1} // Use same background but will be blurred/grayed
+          style={{ flex: 1, padding: 16, alignItems: 'center', justifyContent: 'center' }}
+          imageStyle={{ borderRadius: 24, opacity: 0.15 }}
+        >
+          {/* Lock Icon Overlay - Centered and prominent */}
+          <View className="w-16 h-16 rounded-full bg-white/60 items-center justify-center backdrop-blur-md border border-white/50 mb-3 shadow-sm">
+            <HugeiconsIcon icon={LockIcon} size={32} color="#374151" strokeWidth={2} />
           </View>
-        </View>
-        <Text className="text-[15px] font-lexend-semibold text-center mb-1 leading-tight text-gray-400">
-          {badge.name}
-        </Text>
-        <View className="rounded-full py-1.5 px-2 bg-stone-100 mt-2">
-          <Text className="text-[10px] font-lexend-medium text-center text-gray-400">
-            Reward: {badge.xp_reward} XP
+
+          <Text className="text-[15px] font-lexend-bold text-gray-800 text-center leading-tight mb-1 opacity-60">
+            {badge.name}
           </Text>
-        </View>
+
+          <View className="flex-row items-center gap-1 mt-2 bg-white/50 px-3 py-1 rounded-full border border-white/20">
+            <Text className="text-[10px] font-lexend-medium text-gray-600">
+              Premium
+            </Text>
+          </View>
+        </ImageBackground>
       </Pressable>
     );
   }

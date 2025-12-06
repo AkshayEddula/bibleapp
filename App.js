@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "./global.css";
 import { AuthProvider } from "./src/context/AuthContext";
+import { SubscriptionProvider } from "./src/context/SubscriptionContext";
 import RootNavigator from "./src/navigation/RootNavigator";
 SplashScreen.preventAutoHideAsync();
 
@@ -46,16 +47,16 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        {/* <SubscriptionProvider> */}
-        {/* <ErrorBoundary> */}
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-        {/* </ErrorBoundary> */}
-        {/* </SubscriptionProvider> */}
-      </AuthProvider>
-    </SafeAreaProvider>
+    <NavigationContainer>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <SubscriptionProvider>
+            {/* <ErrorBoundary> */}
+            <RootNavigator />
+            {/* </ErrorBoundary> */}
+          </SubscriptionProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </NavigationContainer>
   );
 }

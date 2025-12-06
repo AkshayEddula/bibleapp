@@ -1,422 +1,341 @@
+import {
+    Cancel01Icon,
+    CheckmarkBadge01Icon,
+    LockKeyIcon,
+    Shield01Icon,
+    SparklesIcon,
+    StarIcon,
+    ZapIcon
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    ImageBackground,
+    Pressable,
     ScrollView,
-    StyleSheet,
+    StatusBar,
+    StyleSheet, // Added StyleSheet
     Text,
-    TouchableOpacity,
-    View,
+    View
 } from "react-native";
+import Animated, {
+    FadeInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withTiming
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscription } from "../../context/SubscriptionContext";
+import { images } from "../../utils";
+
+const MOCK_PACKAGES = [
+    {
+        identifier: 'annual_premium',
+        packageType: 'ANNUAL',
+        product: {
+            title: 'Yearly Access',
+            priceString: '$59.99',
+            description: 'Best for long-term growth',
+            price: 59.99,
+        }
+    },
+    {
+        identifier: 'weekly_premium',
+        packageType: 'WEEKLY',
+        product: {
+            title: 'Weekly Access',
+            priceString: '$4.99',
+            description: 'Flexible, cancel anytime',
+            price: 4.99,
+        }
+    }
+];
+
+const PlanCard = ({ item, isSelected, onPress, badge, badgeColor }) => {
+    return (
+        <Pressable
+            onPress={onPress}
+            className={`p-[18px] rounded-[18px] border mb-4 relative ${isSelected
+                ? 'bg-amber-500/10 border-amber-500'
+                : 'bg-white/5 border-white/10'
+                }`}
+        >
+            {badge && (
+                <View
+                    style={{ backgroundColor: badgeColor }}
+                    className="absolute -top-2.5 right-4 px-2 py-1 rounded-md z-10"
+                >
+                    <Text className="text-white text-[10px] font-lexend font-bold tracking-widest">
+                        {badge}
+                    </Text>
+                </View>
+            )}
+
+            <View className="flex-row items-center">
+                <View className={`w-[22px] h-[22px] rounded-full border-2 items-center justify-center mr-3.5 ${isSelected ? 'border-amber-500' : 'border-neutral-600'
+                    }`}>
+                    {isSelected && <View className="w-3 h-3 rounded-full bg-amber-500" />}
+                </View>
+
+                <View className="flex-1 justify-center">
+                    <Text className={`text-base font-lexend font-bold mb-0.5 ${isSelected ? 'text-white' : 'text-neutral-300'
+                        }`}>
+                        {item.product.title}
+                    </Text>
+                    <Text className="text-xs font-lexend font-medium text-neutral-400">
+                        {item.product.description}
+                    </Text>
+                </View>
+
+                <View className="items-end justify-center">
+                    <Text className={`text-[17px] font-lexend font-bold -tracking-[0.5px] ${isSelected ? 'text-amber-500' : 'text-neutral-300'
+                        }`}>
+                        {item.product.priceString}
+                    </Text>
+                    <Text className="text-[11px] font-lexend font-medium text-neutral-500">
+                        /{item.packageType === 'ANNUAL' ? 'year' : 'week'}
+                    </Text>
+                </View>
+            </View>
+        </Pressable>
+    );
+};
 
 const PaywallScreen = () => {
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
     const {
         offerings,
         fetchOfferings,
         purchasePackage,
         restorePurchases,
-        isPremium,
     } = useSubscription();
+
     const [loading, setLoading] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState(null);
-    const [error, setError] = useState(null);
+    const buttonScale = useSharedValue(1);
+
+    const availablePackages = offerings?.availablePackages?.length > 0
+        ? offerings.availablePackages
+        : MOCK_PACKAGES;
 
     useEffect(() => {
-        loadOfferings();
+        const annual = availablePackages.find(p => p.packageType === "ANNUAL");
+        if (annual) setSelectedPackage(annual);
+        else if (availablePackages.length > 0) setSelectedPackage(availablePackages[0]);
+        fetchOfferings();
     }, []);
 
-    const loadOfferings = async () => {
+    const handlePurchase = async () => {
+        if (!selectedPackage) return;
+        buttonScale.value = withSequence(withTiming(0.95, { duration: 100 }), withTiming(1, { duration: 100 }));
         setLoading(true);
-        setError(null);
-        console.log("📱 PaywallScreen: Loading offerings...");
 
-        const result = await fetchOfferings();
-        setLoading(false);
-
-        if (!result) {
-            console.log("❌ PaywallScreen: No offerings returned");
-            setError("Unable to load subscription plans");
-            // Show retry dialog
-            Alert.alert(
-                "Unable to Load Plans",
-                "Please check your internet connection and try again.",
-                [
-                    { text: "Retry", onPress: loadOfferings },
-                    { text: "Go Back", onPress: () => navigation.goBack() }
-                ]
-            );
-        } else {
-            console.log("✅ PaywallScreen: Offerings loaded successfully");
-            // Auto-select first package if available
-            if (result.availablePackages && result.availablePackages.length > 0) {
-                setSelectedPackage(result.availablePackages[0]);
-            }
+        if (offerings?.availablePackages?.length === 0) {
+            setTimeout(() => {
+                setLoading(false);
+                navigation.goBack();
+            }, 1500);
+            return;
         }
-    };
 
-    const handlePurchase = async (pkg) => {
-        setLoading(true);
-        console.log("💳 PaywallScreen: Starting purchase...");
-        const result = await purchasePackage(pkg);
-        setLoading(false);
-
-        if (result.success) {
-            console.log("✅ PaywallScreen: Purchase successful");
-            navigation.goBack();
-        } else if (!result.cancelled) {
-            console.log("❌ PaywallScreen: Purchase failed");
+        try {
+            const result = await purchasePackage(selectedPackage);
+            if (result.success) navigation.goBack();
+        } catch (e) {
+            Alert.alert("Error", e.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleRestore = async () => {
         setLoading(true);
-        console.log("🔄 PaywallScreen: Restoring purchases...");
         await restorePurchases();
         setLoading(false);
+        Alert.alert("Restored", "Your purchases have been restored.");
     };
 
-    if (loading && !offerings && !error) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={styles.loadingText}>Loading subscription options...</Text>
-            </View>
-        );
-    }
-
-    if (isPremium) {
-        return (
-            <View style={styles.container}>
-                <Text style={styles.title}>You're Premium! 🎉</Text>
-                <Text style={styles.description}>
-                    You have access to all premium features
-                </Text>
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.buttonText}>Continue</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    if (error && !offerings) {
-        return (
-            <View style={styles.errorContainer}>
-                <Text style={styles.errorTitle}>Oops! 😕</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity
-                    style={styles.button}
-                    onPress={loadOfferings}
-                >
-                    <Text style={styles.buttonText}>Try Again</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.secondaryButtonText}>Go Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
+    const animatedButtonStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: buttonScale.value }]
+    }));
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Upgrade to Premium</Text>
-                <Text style={styles.description}>
-                    Unlock all features and get the best experience
-                </Text>
-            </View>
+        <View className="flex-1 bg-black">
+            <StatusBar barStyle="light-content" />
 
-            <View style={styles.features}>
-                <FeatureItem text="✨ Unlimited access to all features" />
-                <FeatureItem text="🚀 Priority customer support" />
-                <FeatureItem text="🎯 Advanced analytics" />
-                <FeatureItem text="💾 Cloud backup" />
-            </View>
+            <ImageBackground
+                source={images.J1}
+                className="flex-1 w-full h-full"
+                resizeMode="cover"
+                blurRadius={4}
+            >
+                {/* 1. SOLID DARK OVERLAY (Using className here is fine as it's a View) */}
+                <View className="absolute w-full h-full bg-black/10" />
 
-            <View style={styles.packages}>
-                {offerings?.availablePackages && offerings.availablePackages.length > 0 ? (
-                    offerings.availablePackages.map((pkg) => (
-                        <PackageCard
-                            key={pkg.identifier}
-                            package={pkg}
-                            selected={selectedPackage?.identifier === pkg.identifier}
-                            onSelect={() => setSelectedPackage(pkg)}
-                        />
-                    ))
-                ) : (
-                    <View style={styles.noPackagesContainer}>
-                        <Text style={styles.noPackagesText}>
-                            No subscription plans available at the moment.
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.retryButton}
-                            onPress={loadOfferings}
-                        >
-                            <Text style={styles.retryButtonText}>Refresh</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
+                {/* 2. GRADIENT OVERLAY (Using style because LinearGradient hates className) */}
+                <LinearGradient
+                    colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)', '#000000']}
+                    locations={[0, 0.45, 0.85]}
+                    style={StyleSheet.absoluteFill} // <--- Fixed here
+                />
 
-            {offerings?.availablePackages && offerings.availablePackages.length > 0 && (
-                <>
-                    <TouchableOpacity
-                        style={[
-                            styles.subscribeButton,
-                            !selectedPackage && styles.subscribeButtonDisabled,
-                        ]}
-                        onPress={() => selectedPackage && handlePurchase(selectedPackage)}
-                        disabled={!selectedPackage || loading}
+                {/* --- HEADER --- */}
+                <View style={{ marginTop: insets.top }} className="px-5 pt-2 items-start z-10 mb-2">
+                    <Pressable
+                        onPress={() => navigation.goBack()}
+                        className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"
+                        hitSlop={20}
                     >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.subscribeButtonText}>
-                                {selectedPackage
-                                    ? `Subscribe - ${selectedPackage.product.priceString}`
-                                    : "Select a Plan"}
-                            </Text>
-                        )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.restoreButton}
-                        onPress={handleRestore}
-                        disabled={loading}
-                    >
-                        <Text style={styles.restoreButtonText}>Restore Purchases</Text>
-                    </TouchableOpacity>
-                </>
-            )}
-
-            <Text style={styles.footer}>
-                Subscriptions auto-renew. Cancel anytime in your device settings.
-            </Text>
-        </ScrollView>
-    );
-};
-
-const FeatureItem = ({ text }) => (
-    <View style={styles.featureItem}>
-        <Text style={styles.featureText}>{text}</Text>
-    </View>
-);
-
-const PackageCard = ({ package: pkg, selected, onSelect }) => {
-    const getBadge = () => {
-        if (pkg.packageType === "ANNUAL") return "Best Value";
-        if (pkg.packageType === "MONTHLY") return "Popular";
-        return null;
-    };
-
-    return (
-        <TouchableOpacity
-            style={[styles.packageCard, selected && styles.packageCardSelected]}
-            onPress={onSelect}
-        >
-            {getBadge() && (
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{getBadge()}</Text>
+                        <HugeiconsIcon pointerEvents="none" icon={Cancel01Icon} size={24} color="rgba(255,255,255,0.8)" />
+                    </Pressable>
                 </View>
-            )}
-            <Text style={styles.packageTitle}>{pkg.product.title}</Text>
-            <Text style={styles.packagePrice}>{pkg.product.priceString}</Text>
-            <Text style={styles.packageDescription}>
-                {pkg.product.description || pkg.product.subscriptionPeriod}
-            </Text>
-        </TouchableOpacity>
+
+                <ScrollView
+                    contentContainerStyle={{ paddingBottom: 160, paddingHorizontal: 24 }}
+                    showsVerticalScrollIndicator={false}
+                    bounces={false}
+                >
+                    <Animated.View entering={FadeInDown.duration(800).springify()}>
+
+                        {/* --- HERO SECTION --- */}
+                        <View className="mb-6">
+                            <View className="self-start bg-amber-500/40 px-2.5 py-1.5 rounded-[18px] mb-3 border border-amber-500/40">
+                                <Text className="text-white text-[10px] font-lexend font-bold tracking-[-0.2px]">
+                                    PREMIUM ACCESS
+                                </Text>
+                            </View>
+
+                            <Text
+                                style={{ textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}
+                                className="text-[32px] font-lexend font-bold text-white leading-tight mb-2 -tracking-[1px]"
+                            >
+                                Deepen your daily walk with God.
+                            </Text>
+
+                            <Text className="text-base font-lexend font-medium text-neutral-200 leading-6 mb-4 tracking-wide">
+                                Unlock unlimited AI insights and devotionals to help you grow closer to Him.
+                            </Text>
+
+                            <View className="flex-row items-center self-start bg-white/10 pr-3 pl-1 py-1 rounded-full border border-white/10">
+                                <View className="w-5 h-5 rounded-full bg-amber-500 items-center justify-center mr-2">
+                                    <HugeiconsIcon icon={CheckmarkBadge01Icon} size={12} color="#FFF" variant="solid" />
+                                </View>
+                                <Text className="text-neutral-100 text-xs font-lexend font-semibold tracking-wide">
+                                    Join thousands of growing believers
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* --- BENEFITS STRIP --- */}
+                        <View className="flex-row justify-between items-center bg-black/40 rounded-2xl py-4 px-4 mb-6 border border-white/10">
+                            <View className="flex-1 items-center gap-1.5">
+                                <HugeiconsIcon icon={SparklesIcon} size={20} color="#FCD34D" variant="solid" />
+                                <Text className="text-neutral-200 text-xs font-lexend font-semibold tracking-wide">Unlimited AI</Text>
+                            </View>
+                            <View className="w-[1px] h-5 bg-white/10" />
+                            <View className="flex-1 items-center gap-1.5">
+                                <HugeiconsIcon icon={Shield01Icon} size={20} color="#FCD34D" variant="solid" />
+                                <Text className="text-neutral-200 text-xs font-lexend font-semibold tracking-wide">Ad-Free</Text>
+                            </View>
+                            <View className="w-[1px] h-5 bg-white/10" />
+                            <View className="flex-1 items-center gap-1.5">
+                                <HugeiconsIcon icon={StarIcon} size={20} color="#FCD34D" variant="solid" />
+                                <Text className="text-neutral-200 text-xs font-lexend font-semibold tracking-wide">Exclusive</Text>
+                            </View>
+                        </View>
+
+                        {/* --- PLANS --- */}
+                        <View>
+                            {availablePackages.map((pkg) => {
+                                const isSelected = selectedPackage?.identifier === pkg.identifier;
+                                const isAnnual = pkg.packageType === "ANNUAL";
+
+                                let badge = isAnnual ? "BEST VALUE" : "MOST FLEXIBLE";
+                                let badgeColor = isAnnual ? '#F59E0B' : '#3B82F6';
+
+                                return (
+                                    <PlanCard
+                                        key={pkg.identifier}
+                                        item={pkg}
+                                        isSelected={isSelected}
+                                        onPress={() => setSelectedPackage(pkg)}
+                                        badge={badge}
+                                        badgeColor={badgeColor}
+                                    />
+                                );
+                            })}
+                        </View>
+                    </Animated.View>
+                </ScrollView>
+
+                {/* --- FOOTER --- */}
+                <View
+                    style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 20 }}
+                    className="absolute bottom-0 left-0 right-0 bg-black border-t border-white/10 px-5 pt-4 shadow-2xl"
+                >
+                    <View className="flex-row items-center justify-center mb-3 gap-1.5">
+                        <HugeiconsIcon icon={ZapIcon} size={14} color="#F59E0B" variant="solid" />
+                        <Text className="text-amber-500 text-xs font-lexend font-semibold">
+                            3-Day Free Trial included
+                        </Text>
+                    </View>
+
+                    <Animated.View style={animatedButtonStyle}>
+                        <Pressable
+                            onPress={handlePurchase}
+                            disabled={loading}
+                            className="rounded-2xl overflow-hidden mb-3"
+                        >
+                            {/* FIXED BUTTON GRADIENT: Using style prop */}
+                            <LinearGradient
+                                colors={['#F59E0B', '#D97706']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ paddingVertical: 16, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#FFF" />
+                                ) : (
+                                    <View className=" flex-row gap-[0.5px] items-center justify-center">
+                                        <View className="items-center">
+                                            <Text className="text-white text-[17px] font-lexend font-bold tracking-[-0.4px] ">
+                                                Start Free Trial
+                                            </Text>
+                                            {/* <Text className="text-white/80 text-[11px] font-lexend font-medium">
+                                                Then {selectedPackage?.product.priceString}/{selectedPackage?.packageType === 'ANNUAL' ? 'year' : 'week'}
+                                            </Text> */}
+                                        </View>
+                                        <HugeiconsIcon pointerEvents="none" icon={ZapIcon} size={26} strokeWidth={1.8} color="#FFF" variant="solid" />
+                                    </View>
+                                )}
+                            </LinearGradient>
+                        </Pressable>
+                    </Animated.View>
+
+                    <View className="flex-row items-center justify-center gap-2 opacity-60">
+                        <Pressable onPress={handleRestore} hitSlop={15}>
+                            <Text className="text-neutral-400 text-[11px] font-lexend font-medium">
+                                Restore Purchases
+                            </Text>
+                        </Pressable>
+                        <Text className="text-neutral-600 text-[10px]">•</Text>
+                        <View className="flex-row items-center gap-1">
+                            <HugeiconsIcon icon={LockKeyIcon} size={10} color="#666" />
+                            <Text className="text-neutral-400 text-[11px] font-lexend font-medium">
+                                Secured by Apple
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </ImageBackground>
+        </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#fff",
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: "#666",
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24,
-    },
-    errorTitle: {
-        fontSize: 32,
-        fontWeight: "bold",
-        marginBottom: 16,
-    },
-    errorText: {
-        fontSize: 16,
-        color: "#666",
-        textAlign: "center",
-        marginBottom: 24,
-    },
-    header: {
-        padding: 24,
-        alignItems: "center",
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: "bold",
-        marginBottom: 8,
-        textAlign: "center",
-    },
-    description: {
-        fontSize: 16,
-        color: "#666",
-        textAlign: "center",
-    },
-    features: {
-        padding: 24,
-        paddingTop: 0,
-    },
-    featureItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 12,
-    },
-    featureText: {
-        fontSize: 16,
-        marginLeft: 8,
-    },
-    packages: {
-        padding: 24,
-        paddingTop: 0,
-    },
-    noPackagesContainer: {
-        padding: 20,
-        alignItems: "center",
-    },
-    noPackagesText: {
-        fontSize: 16,
-        color: "#666",
-        textAlign: "center",
-        marginBottom: 16,
-    },
-    retryButton: {
-        backgroundColor: "#007AFF",
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "600",
-    },
-    packageCard: {
-        borderWidth: 2,
-        borderColor: "#E5E5E5",
-        borderRadius: 12,
-        padding: 20,
-        marginBottom: 16,
-        position: "relative",
-    },
-    packageCardSelected: {
-        borderColor: "#007AFF",
-        backgroundColor: "#F0F8FF",
-    },
-    badge: {
-        position: "absolute",
-        top: -10,
-        right: 16,
-        backgroundColor: "#FF3B30",
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    badgeText: {
-        color: "#fff",
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    packageTitle: {
-        fontSize: 18,
-        fontWeight: "600",
-        marginBottom: 4,
-    },
-    packagePrice: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: "#007AFF",
-        marginBottom: 4,
-    },
-    packageDescription: {
-        fontSize: 14,
-        color: "#666",
-    },
-    subscribeButton: {
-        backgroundColor: "#007AFF",
-        margin: 24,
-        marginTop: 0,
-        padding: 18,
-        borderRadius: 12,
-        alignItems: "center",
-    },
-    subscribeButtonDisabled: {
-        backgroundColor: "#CCC",
-    },
-    subscribeButtonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "600",
-    },
-    restoreButton: {
-        padding: 16,
-        alignItems: "center",
-    },
-    restoreButtonText: {
-        color: "#007AFF",
-        fontSize: 16,
-    },
-    footer: {
-        textAlign: "center",
-        fontSize: 12,
-        color: "#999",
-        padding: 24,
-        paddingTop: 0,
-    },
-    button: {
-        backgroundColor: "#007AFF",
-        padding: 16,
-        borderRadius: 12,
-        margin: 24,
-        minWidth: 200,
-    },
-    buttonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "600",
-        textAlign: "center",
-    },
-    secondaryButton: {
-        padding: 16,
-        borderRadius: 12,
-        minWidth: 200,
-    },
-    secondaryButtonText: {
-        color: "#007AFF",
-        fontSize: 18,
-        fontWeight: "600",
-        textAlign: "center",
-    },
-});
 
 export default PaywallScreen;

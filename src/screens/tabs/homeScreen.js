@@ -1,5 +1,5 @@
 // HomeScreen.js - Updated with Stories Header
-import { ChampionIcon, Fire02Icon } from "@hugeicons/core-free-icons";
+import { ChampionIcon, Fire02Icon, LockIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useNavigation } from "@react-navigation/native";
 import Constants from "expo-constants";
@@ -26,6 +26,7 @@ import { VerseCard } from "../../components/VerseCard";
 import VerseReelsPreview from "../../components/VerseReelsPreview";
 import XPModal from "../../components/XPModal";
 import { useAuth } from "../../context/AuthContext";
+import { useSubscription } from "../../context/SubscriptionContext";
 import { supabase } from "../../lib/supabase";
 
 const { width } = Dimensions.get("window");
@@ -67,6 +68,7 @@ const getRandomEmoji = () => {
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { isUserLoggedIn, user, logout, isLogoutLoading } = useAuth();
+  const { isPremium } = useSubscription();
   const [verses, setVerses] = useState([]);
   const [likedVerses, setLikedVerses] = useState(new Set());
   const [savedVerses, setSavedVerses] = useState(new Set());
@@ -190,10 +192,19 @@ export default function HomeScreen() {
     try {
       if (pageNumber === 0) setLoading(true);
 
+      // Free user limit
+      if (!isPremium && pageNumber > 0) {
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+
+      const effectivePageSize = !isPremium ? 5 : PAGE_SIZE;
+
       let query = supabase
         .from("bible_verses")
         .select("*")
-        .range(pageNumber * PAGE_SIZE, (pageNumber + 1) * PAGE_SIZE - 1);
+        .range(pageNumber * effectivePageSize, (pageNumber + 1) * effectivePageSize - 1);
 
       // Apply Filters
       if (filter !== "All") {
@@ -204,7 +215,7 @@ export default function HomeScreen() {
 
       if (error) throw error;
 
-      if (data.length < PAGE_SIZE) {
+      if (data.length < effectivePageSize || !isPremium) {
         setHasMore(false);
       }
 
@@ -333,12 +344,14 @@ export default function HomeScreen() {
     }
   };
 
+
+
   const fetchStreakData = async () => {
     try {
-      // 1. Get Current Streak & Last Active Date
+      // 1. Get stats
       const { data: stats } = await supabase
         .from("gamification_profiles")
-        .select("current_streak, last_active_date, current_level, total_xp")
+        .select("current_streak, last_active_date,current_level, total_xp")
         .eq("user_id", user.id)
         .single();
 
@@ -346,89 +359,88 @@ export default function HomeScreen() {
         setUserStats(stats);
       }
 
-      // 2. Get Weekly History (Last 7 days)
+      const currentStreak = stats?.current_streak || 0;
+
+      // PARSING FIX: Ensure we handle the date string correctly
+      // Create a date object from the DB string, or default to today
+      let lastActiveDate = stats?.last_active_date
+        ? new Date(stats.last_active_date)
+        : new Date();
+
+      // Normalize to midnight to avoid time-of-day bugs
+      lastActiveDate.setHours(0, 0, 0, 0);
+
       const today = new Date();
-      const last7Days = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        last7Days.push(d.toISOString().split('T')[0]);
+      today.setHours(0, 0, 0, 0);
+
+      // 2. RECONSTRUCT HISTORY (The Fix)
+      // We start at last_active_date and count back X days (where X is streak)
+      const activeDatesSet = new Set();
+
+      if (currentStreak > 0) {
+        // Clone to keep original safe
+        let cursor = new Date(lastActiveDate);
+
+        for (let i = 0; i < currentStreak; i++) {
+          // Add to set: YYYY-MM-DD
+          activeDatesSet.add(cursor.toISOString().split('T')[0]);
+          // Go back 1 day
+          cursor.setDate(cursor.getDate() - 1);
+        }
       }
 
-      // Fetch daily stats for these days
-      const { data: dailyStats } = await supabase
-        .from("daily_user_stats")
-        .select("date")
-        .eq("user_id", user.id)
-        .in("date", last7Days);
+      // 3. CALENDAR GENERATION (The Grid Fix)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
 
-      const activeDates = new Set(dailyStats?.map(ds => ds.date) || []);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday, 1 = Monday...
 
-      const history = last7Days.map(dateStr => {
-        const date = new Date(dateStr);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'narrow' }); // M, T, W...
+      const monthGridData = [];
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-        // Check if this date is "active"
-        // 1. From daily_user_stats (history)
-        // 2. OR if it's today and last_active_date is today (real-time)
-        let isActive = activeDates.has(dateStr);
+      // A. Add Empty "Padding" Days (so 1st starts on correct weekday)
+      for (let i = 0; i < firstDayOfMonth; i++) {
+        monthGridData.push({ type: 'padding', id: `pad-${i}` });
+      }
 
-        if (dateStr === today.toISOString().split('T')[0] && stats?.last_active_date === dateStr) {
-          isActive = true;
+      // B. Add Actual Days
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dateObj = new Date(year, month, i);
+        const dateStr = dateObj.toISOString().split('T')[0];
+        dateObj.setHours(0, 0, 0, 0);
+
+        let status = 'future';
+        if (dateObj <= today) {
+          if (activeDatesSet.has(dateStr)) {
+            status = 'active';
+          } else {
+            status = dateObj < today ? 'missed' : 'pending';
+          }
         }
 
-        return {
-          day: dayName,
-          active: isActive,
-          isToday: dateStr === today.toISOString().split('T')[0]
-        };
-      });
-
-      // 3. Get Active Streak Quests (from metadata)
-      const { data: allStreakQuests } = await supabase
-        .from("quests")
-        .select("*")
-        .ilike("requirement_type", "%streak%")
-        .eq("is_active", true);
-
-      // 4. Get User Progress for these quests (to check completion)
-      const { data: userQuestProgress } = await supabase
-        .from("user_quests")
-        .select("quest_id, is_completed")
-        .eq("user_id", user.id)
-        .in("quest_id", allStreakQuests?.map(q => q.id) || []);
-
-      const completedQuestIds = new Set(
-        userQuestProgress?.filter(uq => uq.is_completed).map(uq => uq.quest_id)
-      );
-
-      const formattedQuests = allStreakQuests?.map(q => {
-        const isCompleted = completedQuestIds.has(q.id);
-        // If not completed, show current streak as progress
-        // If completed, it's done.
-        return {
-          title: q.title,
-          reward: q.xp_reward,
-          completed: isCompleted,
-          progress: isCompleted ? q.requirement_count : (stats?.current_streak || 0),
-          total: q.requirement_count
-        };
-      }) || [];
-
-      // Sort: Incomplete first
-      formattedQuests.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+        monthGridData.push({
+          type: 'day',
+          id: `day-${i}`,
+          dayNum: i,
+          status: status,
+          isToday: dateObj.getTime() === today.getTime()
+        });
+      }
 
       setStreakData({
-        current: stats?.current_streak || 0,
-        history,
-        quests: formattedQuests
+        current: currentStreak,
+        monthTitle: `${monthNames[month]} ${year}`,
+        history: monthGridData, // Now includes padding + days
+        quests: []
       });
 
     } catch (error) {
       console.error("Error fetching streak data:", error);
-      // Silent fail for streak data is okay, but maybe log it
     }
   };
+
 
   const toggleInteraction = async (verseId, type, currentState, setState) => {
     const isCurrentlyActive = currentState.has(verseId);
@@ -833,9 +845,31 @@ export default function HomeScreen() {
 
         {/* Verses Tab Footer */}
         {activeTab === 'verses' && (
-          <View className="py-4 pb-20">
-            {hasMore && verses.length > 0 && (
-              <ActivityIndicator color="#F9C846" />
+          <View className="py-4 pb-20 px-5">
+            {!isPremium && verses.length >= 5 ? (
+              <View className="items-center justify-center p-6 bg-gray-50 rounded-2xl border border-gray-100 mt-4">
+                <View className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center mb-4">
+                  <HugeiconsIcon icon={LockIcon} size={24} color="#374151" strokeWidth={2} />
+                </View>
+                <Text className="font-lexend-bold text-lg text-gray-900 mb-2 text-center">
+                  Unlock Unlimited Verses
+                </Text>
+                <Text className="font-lexend-light text-gray-500 text-center mb-4 leading-6">
+                  You've reached your daily limit of 5 verses. Upgrade to Premium for unlimited access and inspiration.
+                </Text>
+                <Pressable
+                  onPress={() => navigation.navigate('Paywall')}
+                  className="bg-gray-900 w-full py-3.5 rounded-full active:opacity-90 shadow-sm"
+                >
+                  <Text className="text-white font-lexend-medium text-center">
+                    Upgrade Now
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              hasMore && verses.length > 0 && (
+                <ActivityIndicator color="#F9C846" />
+              )
             )}
           </View>
         )}
@@ -963,6 +997,7 @@ export default function HomeScreen() {
         <StreakModal
           visible={streakModalVisible}
           onClose={() => setStreakModalVisible(false)}
+          monthTitle={streakData.monthTitle} // Add this prop
           streak={streakData.current}
           history={streakData.history}
           quests={streakData.quests}

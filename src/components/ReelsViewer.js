@@ -1,5 +1,6 @@
-import { ArrowLeft02Icon, Bookmark02Icon, BubbleChatIcon, Cancel01Icon, FavouriteIcon, Sent02Icon, SentIcon, ViewIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft02Icon, Bookmark02Icon, BubbleChatIcon, Cancel01Icon, FavouriteIcon, LockIcon, Sent02Icon, SentIcon, ViewIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -20,10 +21,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
 import { supabase } from "../lib/supabase";
 import { images } from "../utils";
 
 const { width, height } = Dimensions.get("window");
+
+const DAILY_FREE_LIMIT = 5;
 
 export default function ReelsViewer({
     visible,
@@ -35,14 +39,21 @@ export default function ReelsViewer({
     onInteraction,
     onViewVerse, // New prop for view recording
     loading = false,
+    navigation
 }) {
+    // const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const flatListRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const { user } = useAuth();
+    const { isPremium } = useSubscription();
 
     // Track viewed verses in this session to prevent duplicate view recording
     const [viewedVerses, setViewedVerses] = useState(new Set());
+
+    // Daily Limit State
+    const [unlockedVerses, setUnlockedVerses] = useState(new Set());
+    const [dailyLimitReached, setDailyLimitReached] = useState(false);
 
     // Comment State
     const [showComments, setShowComments] = useState(false);
@@ -56,6 +67,64 @@ export default function ReelsViewer({
     const [isInternalLoading, setIsInternalLoading] = useState(false);
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
     const [prevVersesLength, setPrevVersesLength] = useState(verses.length);
+
+    // Load unlocked verses for today
+    useEffect(() => {
+        if (visible) {
+            loadUnlockedVerses();
+        }
+    }, [visible]);
+
+    const loadUnlockedVerses = async () => {
+        if (isPremium) return; // No limit for premium
+
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const key = `reels_unlocked_${today}`;
+            const stored = await AsyncStorage.getItem(key);
+
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                setUnlockedVerses(new Set(parsed));
+                if (parsed.length >= DAILY_FREE_LIMIT) {
+                    setDailyLimitReached(true);
+                }
+            } else {
+                // New day, reset
+                setUnlockedVerses(new Set());
+                setDailyLimitReached(false);
+            }
+        } catch (error) {
+            console.error("Error loading unlocked verses:", error);
+        }
+    };
+
+    const unlockVerse = async (verseId) => {
+        if (isPremium) return; // Always unlocked
+        if (unlockedVerses.has(verseId)) return; // Already unlocked
+
+        if (unlockedVerses.size >= DAILY_FREE_LIMIT) {
+            setDailyLimitReached(true);
+            return;
+        }
+
+        try {
+            const newSet = new Set(unlockedVerses);
+            newSet.add(verseId);
+            setUnlockedVerses(newSet);
+
+            if (newSet.size >= DAILY_FREE_LIMIT) {
+                setDailyLimitReached(true);
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const key = `reels_unlocked_${today}`;
+            await AsyncStorage.setItem(key, JSON.stringify([...newSet]));
+            console.log(`Unlocked verse ${verseId}. Total unlocked today: ${newSet.size}`);
+        } catch (error) {
+            console.error("Error unlocking verse:", error);
+        }
+    };
 
     // When modal opens, start loading
     useEffect(() => {
@@ -124,29 +193,41 @@ export default function ReelsViewer({
                 const verseId = verses[index].id;
                 setActiveVerseId(verseId);
 
-                // Record view if this verse hasn't been viewed in this session
-                if (onViewVerse && !viewedVerses.has(verseId)) {
-                    console.log('📊 Recording view for verse:', verseId);
-                    console.log('📊 onViewVerse function exists:', !!onViewVerse);
-                    setViewedVerses(prev => new Set(prev).add(verseId));
-                    onViewVerse(verseId);
-                } else if (!onViewVerse) {
-                    console.warn('⚠️ onViewVerse prop not provided to ReelsViewer');
-                } else {
-                    console.log('✓ Verse already viewed in this session:', verseId);
+                // Attempt to unlock logic
+                unlockVerse(verseId);
+
+                // Only record view interaction if technically "unlocked" or premium
+                // (Optional: currently we enforce limit by overlay, so maybe we allow recording view behind overlay? 
+                //  Better to only record if visible. If locked, user can't "see" it properly.)
+                const isLocked = !isPremium && !unlockedVerses.has(verseId) && unlockedVerses.size >= DAILY_FREE_LIMIT;
+
+                if (!isLocked) {
+                    // Record view if this verse hasn't been viewed in this session
+                    if (onViewVerse && !viewedVerses.has(verseId)) {
+                        console.log('📊 Recording view for verse:', verseId);
+                        setViewedVerses(prev => new Set(prev).add(verseId));
+                        onViewVerse(verseId);
+                    }
                 }
             }
         }
-    }, [verses, viewedVerses, onViewVerse]);
+    }, [verses, viewedVerses, onViewVerse, isPremium, unlockedVerses]);
 
     // Record view for initial verse when verses are loaded
     useEffect(() => {
         if (visible && verses.length > 0 && initialIndex >= 0 && initialIndex < verses.length) {
             const initialVerse = verses[initialIndex];
+            // Try unlock initial
+            unlockVerse(initialVerse.id);
+
             if (initialVerse && onViewVerse && !viewedVerses.has(initialVerse.id)) {
-                console.log('📊 Recording initial view for verse:', initialVerse.id);
-                setViewedVerses(prev => new Set(prev).add(initialVerse.id));
-                onViewVerse(initialVerse.id);
+                // Check lock status for initial
+                const isLocked = !isPremium && !unlockedVerses.has(initialVerse.id) && unlockedVerses.size >= DAILY_FREE_LIMIT;
+                if (!isLocked) {
+                    console.log('📊 Recording initial view for verse:', initialVerse.id);
+                    setViewedVerses(prev => new Set(prev).add(initialVerse.id));
+                    onViewVerse(initialVerse.id);
+                }
             }
         }
     }, [visible, verses.length, initialIndex]);
@@ -284,12 +365,15 @@ export default function ReelsViewer({
     };
 
     const renderItem = ({ item, index }) => {
-        // IMPORTANT: Get the latest verse data from state, not the stale item prop
-        // This ensures counts update when parent state changes
         const currentVerse = verses[index] || item;
         const counts = currentVerse.verse_interaction_counts || {};
         const isLiked = likedVerses.has(currentVerse.id);
         const isSaved = savedVerses.has(currentVerse.id);
+
+        // Check if locked
+        // Locked if NOT premium AND limit reached AND not in unlocked set
+        // (Note: we use useSubscription hook above for isPremium)
+        const isLocked = !isPremium && !unlockedVerses.has(currentVerse.id) && unlockedVerses.size >= DAILY_FREE_LIMIT;
 
         return (
             <View style={{ width, height, backgroundColor: "black" }}>
@@ -299,109 +383,146 @@ export default function ReelsViewer({
                         source={images.J1}
                         className="w-full h-full"
                         resizeMode="cover"
-                        blurRadius={10}
+                        blurRadius={isLocked ? 30 : 10}
                     />
                     {/* Dark Overlay for readability */}
-                    <View className="absolute inset-0 bg-black/40" />
+                    <View className={`absolute inset-0 ${isLocked ? 'bg-black/80' : 'bg-black/40'}`} />
                 </View>
 
-                <View
-                    className="flex-1 justify-center px-8"
-                    style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 80 }}
-                >
-                    <Text className="text-white font-lexend-bold text-3xl text-center leading-10 mb-6">
-                        "{currentVerse.content}"
-                    </Text>
-                    <Text className="text-white/80 font-lexend-medium text-xl text-center mb-8">
-                        {currentVerse.book} {currentVerse.chapter}:{currentVerse.verse}
-                    </Text>
-
-                    {/* Meaning / Context */}
-                    {currentVerse.meaning && (
-                        <View className="bg-white/10 p-4 rounded-xl border border-white/10">
-                            <Text className="text-white/90 font-lexend-light text-sm text-center leading-5">
-                                {currentVerse.meaning}
-                            </Text>
+                {isLocked ? (
+                    // LOCKED STATE OVERLAY
+                    <View className="flex-1 items-center justify-center px-8 z-50">
+                        <View className="mb-6 w-20 h-20 bg-white/10 rounded-full items-center justify-center border border-white/20">
+                            <HugeiconsIcon icon={LockIcon} size={40} color="white" />
                         </View>
-                    )}
-                </View>
+                        <Text className="text-white font-lexend-bold text-2xl text-center mb-2">
+                            Daily Limit Reached
+                        </Text>
+                        <Text className="text-white/70 font-lexend-light text-center text-lg mb-8 leading-6">
+                            You've viewed your 5 free verses for today. Upgrade to Premium for unlimited access.
+                        </Text>
 
-                {/* Right Side Actions */}
-                <View
-                    className="absolute flex-row right-10 left-10 bottom-8 items-center gap-12"
-                    style={{ paddingBottom: insets.bottom }}
-                >
-                    {/* View Count - Display Only, Not Clickable */}
-                    <View className="items-center gap-1">
-                        <HugeiconsIcon
-                            icon={ViewIcon}
-                            size={30}
-                            color="white"
-                            fill="transparent"
-                            strokeWidth={1.5}
-                        />
-                        <Text className="text-white text-xs font-lexend-medium">{counts.view_count || 0}</Text>
+                        <Pressable
+                            className="bg-white w-full py-4 rounded-xl mb-4 active:scale-95 transition-all"
+                            onPress={() => {
+                                onClose();
+                                navigation.navigate('Paywall');
+                            }}
+                        >
+                            <Text className="text-black text-center font-lexend-bold text-lg">
+                                Upgrade to Premium
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            className="py-2"
+                            onPress={onClose}
+                        >
+                            <Text className="text-white/60 font-lexend-medium">
+                                Maybe Later
+                            </Text>
+                        </Pressable>
                     </View>
+                ) : (
+                    // UNLOCKED CONTENT
+                    <>
+                        <View
+                            className="flex-1 justify-center px-8"
+                            style={{ paddingTop: insets.top, paddingBottom: insets.bottom + 80 }}
+                        >
+                            <Text className="text-white font-lexend-bold text-3xl text-center leading-10 mb-6">
+                                "{currentVerse.content}"
+                            </Text>
+                            <Text className="text-white/80 font-lexend-medium text-xl text-center mb-8">
+                                {currentVerse.book} {currentVerse.chapter}:{currentVerse.verse}
+                            </Text>
 
-                    {/* Like Button */}
-                    <Pressable
-                        className="items-center gap-1"
-                        hitSlop={10}
-                        onPress={() => onInteraction && onInteraction(currentVerse.id, 'like')}
-                    >
-                        <HugeiconsIcon
-                            icon={FavouriteIcon}
-                            size={30}
-                            color={isLiked ? "#ef4444" : "white"}
-                            fill={isLiked ? "#ef4444" : "transparent"}
-                            strokeWidth={1.5}
-                            pointerEvents="none"
-                        />
-                        <Text className="text-white text-xs font-lexend-medium">{counts.like_count || 0}</Text>
-                    </Pressable>
+                            {/* Meaning / Context */}
+                            {currentVerse.meaning && (
+                                <View className="bg-white/10 p-4 rounded-xl border border-white/10">
+                                    <Text className="text-white/90 font-lexend-light text-sm text-center leading-5">
+                                        {currentVerse.meaning}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
 
-                    {/* Comment Button */}
-                    <Pressable
-                        className="items-center gap-1"
-                        hitSlop={10}
-                        onPress={() => {
-                            setActiveVerseId(currentVerse.id);
-                            setShowComments(true);
-                        }}
-                    >
-                        <HugeiconsIcon icon={BubbleChatIcon} size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
-                        <Text className="text-white text-xs font-lexend-medium">{counts.comment_count || 0}</Text>
-                    </Pressable>
+                        {/* Right Side Actions */}
+                        <View
+                            className="absolute flex-row right-10 left-10 bottom-8 items-center gap-12"
+                            style={{ paddingBottom: insets.bottom }}
+                        >
+                            {/* View Count - Display Only, Not Clickable */}
+                            <View className="items-center gap-1">
+                                <HugeiconsIcon
+                                    icon={ViewIcon}
+                                    size={30}
+                                    color="white"
+                                    fill="transparent"
+                                    strokeWidth={1.5}
+                                />
+                                <Text className="text-white text-xs font-lexend-medium">{counts.view_count || 0}</Text>
+                            </View>
 
-                    {/* Save Button */}
-                    <Pressable
-                        className="items-center gap-1"
-                        hitSlop={10}
-                        onPress={() => onInteraction && onInteraction(currentVerse.id, 'save')}
-                    >
-                        <HugeiconsIcon
-                            icon={Bookmark02Icon}
-                            size={30}
-                            color={isSaved ? "#eab308" : "white"}
-                            fill={isSaved ? "#eab308" : "transparent"}
-                            strokeWidth={1.5}
-                            pointerEvents="none"
-                        />
-                        <Text className="text-white text-xs font-lexend-medium">{counts.save_count || 0}</Text>
-                    </Pressable>
+                            {/* Like Button */}
+                            <Pressable
+                                className="items-center gap-1"
+                                hitSlop={10}
+                                onPress={() => onInteraction && onInteraction(currentVerse.id, 'like')}
+                            >
+                                <HugeiconsIcon
+                                    icon={FavouriteIcon}
+                                    size={30}
+                                    color={isLiked ? "#ef4444" : "white"}
+                                    fill={isLiked ? "#ef4444" : "transparent"}
+                                    strokeWidth={1.5}
+                                    pointerEvents="none"
+                                />
+                                <Text className="text-white text-xs font-lexend-medium">{counts.like_count || 0}</Text>
+                            </Pressable>
 
-                    {/* Share Button */}
-                    <Pressable
-                        className="items-center gap-1"
-                        hitSlop={10}
-                        onPress={() => handleShare(currentVerse)}
-                    >
-                        <HugeiconsIcon icon={SentIcon} size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
-                        <Text className="text-white text-xs font-lexend-medium">{counts.share_count || 0}</Text>
-                    </Pressable>
-                </View>
+                            {/* Comment Button */}
+                            <Pressable
+                                className="items-center gap-1"
+                                hitSlop={10}
+                                onPress={() => {
+                                    setActiveVerseId(currentVerse.id);
+                                    setShowComments(true);
+                                }}
+                            >
+                                <HugeiconsIcon icon={BubbleChatIcon} size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
+                                <Text className="text-white text-xs font-lexend-medium">{counts.comment_count || 0}</Text>
+                            </Pressable>
 
+                            {/* Save Button */}
+                            <Pressable
+                                className="items-center gap-1"
+                                hitSlop={10}
+                                onPress={() => onInteraction && onInteraction(currentVerse.id, 'save')}
+                            >
+                                <HugeiconsIcon
+                                    icon={Bookmark02Icon}
+                                    size={30}
+                                    color={isSaved ? "#eab308" : "white"}
+                                    fill={isSaved ? "#eab308" : "transparent"}
+                                    strokeWidth={1.5}
+                                    pointerEvents="none"
+                                />
+                                <Text className="text-white text-xs font-lexend-medium">{counts.save_count || 0}</Text>
+                            </Pressable>
 
+                            {/* Share Button */}
+                            <Pressable
+                                className="items-center gap-1"
+                                hitSlop={10}
+                                onPress={() => handleShare(currentVerse)}
+                            >
+                                <HugeiconsIcon icon={SentIcon} size={30} color="white" strokeWidth={1.5} pointerEvents="none" />
+                                <Text className="text-white text-xs font-lexend-medium">{counts.share_count || 0}</Text>
+                            </Pressable>
+                        </View>
+                    </>
+                )}
             </View>
         );
     };
@@ -418,7 +539,10 @@ export default function ReelsViewer({
         isInternalLoading,
         isLoading,
         isEmpty,
-        versesLength: verses.length
+        versesLength: verses.length,
+        isPremium,
+        unlockedCount: unlockedVerses.size,
+        limitReached: dailyLimitReached
     });
 
     return (
